@@ -23,10 +23,6 @@ static int _IONBFValue = _IONBF;
 static int L_tmpnamValue = L_tmpnam;
 static int GETS_MAXValue = 255;     /* arbitrary maximum size of a gets() file */
 
-static FILE *stdinValue;
-static FILE *stdoutValue;
-static FILE *stderrValue;
-
 
 /* our own internal output stream which can output to FILE * or strings */
 typedef struct StdOutStreamStruct
@@ -48,10 +44,7 @@ struct StdVararg
 /* initialises the I/O system so error reporting works */
 void BasicIOInit(Picoc *pc)
 {
-    pc->CStdOut = stdout;
-    stdinValue = stdin;
-    stdoutValue = stdout;
-    stderrValue = stderr;
+    //empty
 }
 
 /* output a single character to either a FILE * or a string */
@@ -183,7 +176,6 @@ void StdioFprintfPointer(StdOutStream *Stream, const char *Format, void *Value)
 /* internal do-anything v[s][n]printf() formatting system with output to strings or FILE * */
 int StdioBasePrintf(struct ParseState *Parser, FILE *Stream, char *StrOut, int StrOutLen, char *Format, struct StdVararg *Args)
 {
-    LOGI("%lld %lld",((long long)(Parser->pc)),((long long)(Parser->pc->CStdOut)));
     struct Value *ThisArg = Args->Param[0];
     int ArgCount = 0;
     char *FPos;
@@ -473,9 +465,8 @@ void StdioFseek(struct ParseState *Parser, struct Value *ReturnValue, struct Val
     ReturnValue->Val->Integer = fseek(Param[0]->Val->Pointer, Param[1]->Val->Integer, Param[2]->Val->Integer);
 }
 
-void StdioPerror(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
-{
-    perror(Param[0]->Val->Pointer);
+void StdioPerror(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
+    fprintf(Parser->pc->CStdErr, "%s: %s", (char *) (Param[0]->Val->Pointer), strerror(errno));
 }
 
 void StdioPutc(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
@@ -483,9 +474,8 @@ void StdioPutc(struct ParseState *Parser, struct Value *ReturnValue, struct Valu
     ReturnValue->Val->Integer = putc(Param[0]->Val->Integer, Param[1]->Val->Pointer);
 }
 
-void StdioPutchar(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
-{
-    ReturnValue->Val->Integer = putchar(Param[0]->Val->Integer);
+void StdioPutchar(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
+    ReturnValue->Val->Integer = fputc(Param[0]->Val->Integer, Parser->pc->CStdOut);
 }
 
 void StdioSetbuf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
@@ -503,14 +493,13 @@ void StdioUngetc(struct ParseState *Parser, struct Value *ReturnValue, struct Va
     ReturnValue->Val->Integer = ungetc(Param[0]->Val->Integer, Param[1]->Val->Pointer);
 }
 
-void StdioPuts(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
-{
-    ReturnValue->Val->Integer = puts(Param[0]->Val->Pointer);
+void StdioPuts(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
+    ReturnValue->Val->Integer = fputs(Param[0]->Val->Pointer, Parser->pc->CStdOut);
 }
 
 void StdioGets(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
 {
-    ReturnValue->Val->Pointer = fgets(Param[0]->Val->Pointer, GETS_MAXValue, stdin);
+    ReturnValue->Val->Pointer = fgets(Param[0]->Val->Pointer, GETS_MAXValue, Parser->pc->CStdIn);
     if (ReturnValue->Val->Pointer != NULL)
     {
         char *EOLPos = strchr(Param[0]->Val->Pointer, '\n');
@@ -519,9 +508,8 @@ void StdioGets(struct ParseState *Parser, struct Value *ReturnValue, struct Valu
     }
 }
 
-void StdioGetchar(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
-{
-    ReturnValue->Val->Integer = getchar();
+void StdioGetchar(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
+    ReturnValue->Val->Integer = getc(Parser->pc->CStdIn);
 }
 
 void StdioPrintf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
@@ -535,7 +523,7 @@ void StdioPrintf(struct ParseState *Parser, struct Value *ReturnValue, struct Va
 
 void StdioVprintf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = StdioBasePrintf(Parser, stdout, NULL, 0, Param[0]->Val->Pointer, Param[1]->Val->Pointer);
+    ReturnValue->Val->Integer = StdioBasePrintf(Parser,Parser->pc->CStdOut, NULL, 0, Param[0]->Val->Pointer, Param[1]->Val->Pointer);
 }
 
 void StdioFprintf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -576,7 +564,7 @@ void StdioScanf(struct ParseState *Parser, struct Value *ReturnValue, struct Val
     
     ScanfArgs.Param = Param;
     ScanfArgs.NumArgs = NumArgs-1;
-    ReturnValue->Val->Integer = StdioBaseScanf(Parser, stdin, NULL, Param[0]->Val->Pointer, &ScanfArgs);
+    ReturnValue->Val->Integer = StdioBaseScanf(Parser, Parser->pc->CStdIn, NULL, Param[0]->Val->Pointer, &ScanfArgs);
 }
 
 void StdioFscanf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -609,7 +597,7 @@ void StdioVsnprintf(struct ParseState *Parser, struct Value *ReturnValue, struct
 
 void StdioVscanf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = StdioBaseScanf(Parser, stdin, NULL, Param[0]->Val->Pointer, Param[1]->Val->Pointer);
+    ReturnValue->Val->Integer = StdioBaseScanf(Parser, Parser->pc->CStdIn, NULL, Param[0]->Val->Pointer, Param[1]->Val->Pointer);
 }
 
 void StdioVfscanf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -682,41 +670,55 @@ struct LibraryFunction StdioFunctions[] =
 };
 
 /* creates various system-dependent definitions */
-void StdioSetupFunc(Picoc *pc)
-{
+void StdioSetupFunc(Picoc *pc) {
     struct ValueType *StructFileType;
     struct ValueType *FilePtrType;
 
     /* make a "struct __FILEStruct" which is the same size as a native FILE structure */
-    StructFileType = TypeCreateOpaqueStruct(pc, NULL, TableStrRegister(pc, "__FILEStruct"), sizeof(FILE));
-    
+    StructFileType = TypeCreateOpaqueStruct(pc, NULL, TableStrRegister(pc, "__FILEStruct"),
+                                            sizeof(FILE));
+
     /* get a FILE * type */
     FilePtrType = TypeGetMatching(pc, NULL, StructFileType, TypePointer, 0, pc->StrEmpty, TRUE);
 
     /* make a "struct __va_listStruct" which is the same size as our struct StdVararg */
     TypeCreateOpaqueStruct(pc, NULL, TableStrRegister(pc, "__va_listStruct"), sizeof(FILE));
-    
+
     /* define EOF equal to the system EOF */
-    VariableDefinePlatformVar(pc, NULL, "EOF", &pc->IntType, (union AnyValue *)&EOFValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "SEEK_SET", &pc->IntType, (union AnyValue *)&SEEK_SETValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "SEEK_CUR", &pc->IntType, (union AnyValue *)&SEEK_CURValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "SEEK_END", &pc->IntType, (union AnyValue *)&SEEK_ENDValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "BUFSIZ", &pc->IntType, (union AnyValue *)&BUFSIZValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "FILENAME_MAX", &pc->IntType, (union AnyValue *)&FILENAME_MAXValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "_IOFBF", &pc->IntType, (union AnyValue *)&_IOFBFValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "_IOLBF", &pc->IntType, (union AnyValue *)&_IOLBFValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "_IONBF", &pc->IntType, (union AnyValue *)&_IONBFValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "L_tmpnam", &pc->IntType, (union AnyValue *)&L_tmpnamValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "GETS_MAX", &pc->IntType, (union AnyValue *)&GETS_MAXValue, FALSE);
-    
+    VariableDefinePlatformVar(pc, NULL, "EOF", &pc->IntType, (union AnyValue *) &EOFValue, FALSE);
+    VariableDefinePlatformVar(pc, NULL, "SEEK_SET", &pc->IntType, (union AnyValue *) &SEEK_SETValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "SEEK_CUR", &pc->IntType, (union AnyValue *) &SEEK_CURValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "SEEK_END", &pc->IntType, (union AnyValue *) &SEEK_ENDValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "BUFSIZ", &pc->IntType, (union AnyValue *) &BUFSIZValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "FILENAME_MAX", &pc->IntType,
+                              (union AnyValue *) &FILENAME_MAXValue, FALSE);
+    VariableDefinePlatformVar(pc, NULL, "_IOFBF", &pc->IntType, (union AnyValue *) &_IOFBFValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "_IOLBF", &pc->IntType, (union AnyValue *) &_IOLBFValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "_IONBF", &pc->IntType, (union AnyValue *) &_IONBFValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "L_tmpnam", &pc->IntType, (union AnyValue *) &L_tmpnamValue,
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "GETS_MAX", &pc->IntType, (union AnyValue *) &GETS_MAXValue,
+                              FALSE);
+
     /* define stdin, stdout and stderr */
-    VariableDefinePlatformVar(pc, NULL, "stdin", FilePtrType, (union AnyValue *)&stdinValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "stdout", FilePtrType, (union AnyValue *)&(pc->CStdOut), FALSE);
-    VariableDefinePlatformVar(pc, NULL, "stderr", FilePtrType, (union AnyValue *)&stderrValue, FALSE);
+    VariableDefinePlatformVar(pc, NULL, "stdin", FilePtrType, (union AnyValue *) &(pc->CStdIn),
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "stdout", FilePtrType, (union AnyValue *) &(pc->CStdOut),
+                              FALSE);
+    VariableDefinePlatformVar(pc, NULL, "stderr", FilePtrType, (union AnyValue *) &(pc->CStdErr),
+                              FALSE);
 
     /* define NULL, TRUE and FALSE */
     if (!VariableDefined(pc, TableStrRegister(pc, "NULL")))
-        VariableDefinePlatformVar(pc, NULL, "NULL", &pc->IntType, (union AnyValue *)&Stdio_ZeroValue, FALSE);
+        VariableDefinePlatformVar(pc, NULL, "NULL", &pc->IntType,
+                                  (union AnyValue *) &Stdio_ZeroValue, FALSE);
 }
 
 /* portability-related I/O calls */

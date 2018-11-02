@@ -1,20 +1,15 @@
 #include "apicoc.h"
 #include "interpreter.h"
+#include <fcntl.h>
 
 #define PICOC_STACK_SIZE (128*1024)              /* space for the the stack */
 
 
-static struct Caches {
-	//fd
-	jfieldID descriptorField;
-	//
-} caches;
 
-int main(int argc,char **argv) {
-	printf("%s", "1212121");
-	fflush(stdout);
-	return 10086;
-}
+static struct JNICaches {
+	jfieldID descriptorField;
+	jclass runtimeExClass;
+} caches;
 
 
 static void SetFileDescriptorOfFD(JNIEnv *env, jobject fileDescriptor, int value) {
@@ -28,6 +23,8 @@ static Picoc*Cast(jlong ptr) {
 static jlong ToLong(Picoc*ptr) {
 	return (jlong) ptr;
 }
+
+
 
 EXTERN_C
 JNIEXPORT jlong JNICALL
@@ -43,11 +40,14 @@ Java_edu_guet_apicoc_Interpreter_init0(JNIEnv *env, jclass type, jobject stdinFd
 	pipe(stdin_pipe);
 	pipe(stdout_pipe);
 	pipe(stderr_pipe);
+	fcntl(stdin_pipe[0] , F_SETFL, O_NONBLOCK);
 	picoc->CStdIn = fdopen(stdin_pipe[0], "r");
 	SetFileDescriptorOfFD(env, stdinFd, stdin_pipe[1]);
 	picoc->CStdOut = fdopen(stdout_pipe[1], "w");
+	setvbuf(picoc->CStdOut, NULL, _IONBF, 0);
 	SetFileDescriptorOfFD(env, stdoutFd, stdout_pipe[0]);
 	picoc->CStdErr = fdopen(stderr_pipe[1], "w");
+	setvbuf(picoc->CStdErr, NULL, _IONBF, 0);
 	SetFileDescriptorOfFD(env, stderrFd, stderr_pipe[0]);
 	return ToLong(picoc);
 }
@@ -56,9 +56,12 @@ EXTERN_C
 JNIEXPORT void JNICALL
 Java_edu_guet_apicoc_Interpreter_staticInit0(JNIEnv *env, jclass type) {
 	jclass fileDescriptorClass =
-			(jclass) (env->NewGlobalRef(env->FindClass("java/io/FileDescriptor")));
+			env->FindClass("java/io/FileDescriptor");
 	caches.descriptorField =
 			env->GetFieldID(fileDescriptorClass, "descriptor", "I");
+
+	caches.runtimeExClass =
+			(jclass) env->NewGlobalRef(env->FindClass("java/lang/RuntimeException"));
 }
 
 
@@ -103,6 +106,7 @@ Java_edu_guet_apicoc_Interpreter_close0(JNIEnv *env, jclass type, jlong ptr) {
 	delete pc;
 }
 
+
 EXTERN_C
 JNIEXPORT jint JNICALL
 Java_edu_guet_apicoc_Interpreter_callMain0(JNIEnv *env, jclass type, jlong ptr, jobjectArray args) {
@@ -114,7 +118,6 @@ Java_edu_guet_apicoc_Interpreter_callMain0(JNIEnv *env, jclass type, jlong ptr, 
 		cargs[i] = (char *) env->GetStringUTFChars((jstring) env->GetObjectArrayElement(args, i),
 												   JNI_FALSE);
 	}
-	picoc->JavaEnv = env;
 	PicocCallMain(Cast(ptr), size, cargs);
 	for (jsize i = 0; i < size; i++) {
 		env->ReleaseStringUTFChars((jstring) env->GetObjectArrayElement(args, i), cargs[i]);
@@ -122,6 +125,9 @@ Java_edu_guet_apicoc_Interpreter_callMain0(JNIEnv *env, jclass type, jlong ptr, 
 	}
 	picoc->JavaEnv = nullptr;
 	delete cargs;
+	if (picoc->DebugManualBreak) {
+		env->ThrowNew(caches.runtimeExClass, "C Script Runtime Error");
+	}
 	return picoc->PicocExitValue;
 }
 

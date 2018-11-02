@@ -5,6 +5,41 @@
 
 static int Stdlib_ZeroValue = 0;
 
+char *itoa(int num,char*str,int radix) {/*索引表*/
+    char index[] = "0123456789ABCDEF";
+    unsigned unum;/*中间变量*/
+    int i = 0, j, k;
+/*确定unum的值*/
+    if (radix == 10 && num < 0)/*十进制负数*/
+    {
+        unum = (unsigned) -num;
+        str[i++] = '-';
+    }
+    else unum = (unsigned) num;/*其他情况*/
+/*转换*/
+    do {
+        str[i++] = index[unum % (unsigned) radix];
+        unum /= radix;
+    } while (unum);
+    str[i] = '\0';
+/*逆序*/
+    if (str[0] == '-')k = 1;/*+进制-数*/
+    else k = 0;
+    char temp;
+    for (j = k; j <= (i - 1) / 2; j++) {
+        temp = str[j];
+        str[j] = str[i - 1 + k - j];
+        str[i - 1 + k - j] = temp;
+    }
+    return str;
+}
+
+
+void StdlibItoa(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
+    ReturnValue->Val->Pointer = itoa(Param[0]->Val->Integer, Param[1]->Val->Pointer,
+                                     Param[2]->Val->Integer);
+}
+
 #ifndef NO_FP
 void StdlibAtof(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
@@ -133,35 +168,36 @@ typedef struct { \
 
 /* all stdlib.h functions */
 struct LibraryFunction StdlibFunctions[] =
-{
+        {
 #ifndef NO_FP
-    { StdlibAtof,           "float atof(char *);" },
-    { StdlibStrtod,         "float strtod(char *,char **);" },
+                {StdlibAtof, "float atof(char *);"},
+                {StdlibStrtod, "float strtod(char *,char **);"},
 #endif
-    { StdlibAtoi,           "int atoi(char *);" },
-    { StdlibAtol,           "int atol(char *);" },
-    { StdlibStrtol,         "int strtol(char *,char **,int);" },
-    { StdlibStrtoul,        "int strtoul(char *,char **,int);" },
-    { StdlibMalloc,         "void *malloc(int);" },
-    { StdlibCalloc,         "void *calloc(int,int);" },
-    { StdlibRealloc,        "void *realloc(void *,int);" },
-    { StdlibFree,           "void free(void *);" },
-    { StdlibRand,           "int rand();" },
-    { StdlibSrand,          "void srand(int);" },
-    { StdlibAbort,          "void abort();" },
-    { StdlibExit,           "void exit(int);" },
-    { StdlibGetenv,         "char *getenv(char *);" },
-    { StdlibSystem,         "int system(char *);" },
+                {StdlibItoa, "char *itoa(int,char *,int);"},
+                {StdlibAtoi, "int atoi(char *);"},
+                {StdlibAtol, "int atol(char *);"},
+                {StdlibStrtol, "int strtol(char *,char **,int);"},
+                {StdlibStrtoul, "int strtoul(char *,char **,int);"},
+                {StdlibMalloc, "void *malloc(int);"},
+                {StdlibCalloc, "void *calloc(int,int);"},
+                {StdlibRealloc, "void *realloc(void *,int);"},
+                {StdlibFree, "void free(void *);"},
+                {StdlibRand, "int rand();"},
+                {StdlibSrand, "void srand(int);"},
+                {StdlibAbort, "void abort();"},
+                {StdlibExit, "void exit(int);"},
+                {StdlibGetenv, "char *getenv(char *);"},
+                {StdlibSystem, "int system(char *);"},
 /*    { StdlibBsearch,        "void *bsearch(void *,void *,int,int,int (*)());" }, */
 /*    { StdlibQsort,          "void *qsort(void *,int,int,int (*)());" }, */
-    { StdlibAbs,            "int abs(int);" },
-    { StdlibLabs,           "int labs(int);" },
+                {StdlibAbs, "int abs(int);"},
+                {StdlibLabs, "int labs(int);"},
 #if 0
-    { StdlibDiv,            "div_t div(int);" },
-    { StdlibLdiv,           "ldiv_t ldiv(int);" },
+        { StdlibDiv,            "div_t div(int);" },
+        { StdlibLdiv,           "ldiv_t ldiv(int);" },
 #endif
-    { NULL,                 NULL }
-};
+                {NULL, NULL}
+        };
 
 /* creates various system-dependent definitions */
 void StdlibSetupFunc(Picoc *pc)
