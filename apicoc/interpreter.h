@@ -6,6 +6,7 @@
 #define INTERPRETER_H
 
 #include "platform.h"
+#include <jni.h>
 
 
 /* handy definitions */
@@ -360,13 +361,12 @@ struct IncludeLibrary
 
 
 /* the entire state of the picoc system */
-struct Picoc_Struct
-{
+struct Picoc_Struct {
     /* parser global data */
     struct Table GlobalTable;
     struct CleanupTokenNode *CleanupTokenList;
     struct TableEntry *GlobalHashTable[GLOBAL_TABLE_SIZE];
-    
+
     /* lexer global data */
     struct TokenLine *InteractiveHead;
     struct TokenLine *InteractiveTail;
@@ -380,7 +380,7 @@ struct Picoc_Struct
     /* the table of string literal values */
     struct Table StringLiteralTable;
     struct TableEntry *StringLiteralHashTable[STRING_LITERAL_TABLE_SIZE];
-    
+
     /* the stack */
     struct StackFrame *TopStackFrame;
 
@@ -392,9 +392,12 @@ struct Picoc_Struct
 
     /* heap memory */
 #ifdef USE_MALLOC_STACK
-    unsigned char *HeapMemory;          /* stack memory since our heap is malloc()ed */
-    void *HeapBottom;                   /* the bottom of the (downward-growing) heap */
-    void *StackFrame;                   /* the current stack frame */
+    unsigned char *HeapMemory;
+    /* stack memory since our heap is malloc()ed */
+    void *HeapBottom;
+    /* the bottom of the (downward-growing) heap */
+    void *StackFrame;
+    /* the current stack frame */
     void *HeapStackTop;                 /* the top of the stack */
 #else
 # ifdef SURVEYOR_HOST
@@ -411,10 +414,11 @@ struct Picoc_Struct
 # endif
 #endif
 
-    struct AllocNode *FreeListBucket[FREELIST_BUCKETS];      /* we keep a pool of freelist buckets to reduce fragmentation */
+    struct AllocNode *FreeListBucket[FREELIST_BUCKETS];
+    /* we keep a pool of freelist buckets to reduce fragmentation */
     struct AllocNode *FreeListBig;                           /* free memory which doesn't fit in a bucket */
 
-    /* types */    
+    /* types */
     struct ValueType UberType;
     struct ValueType IntType;
     struct ValueType ShortType;
@@ -424,9 +428,9 @@ struct Picoc_Struct
     struct ValueType UnsignedShortType;
     struct ValueType UnsignedLongType;
     struct ValueType UnsignedCharType;
-    #ifndef NO_FP
+#ifndef NO_FP
     struct ValueType FPType;
-    #endif
+#endif
     struct ValueType VoidType;
     struct ValueType TypeType;
     struct ValueType FunctionType;
@@ -443,17 +447,22 @@ struct Picoc_Struct
     struct TableEntry *BreakpointHashTable[BREAKPOINT_TABLE_SIZE];
     int BreakpointCount;
     int DebugManualBreak;
-    
+
     /* C library */
     int BigEndian;
     int LittleEndian;
 
+    IOFILE *CStdIn;
+    IOFILE *CStdErr;
     IOFILE *CStdOut;
-    IOFILE CStdOutBase;
+
+    /*JNIEnv*/
+
+    JNIEnv *JavaEnv;
 
     /* the picoc version string */
     const char *VersionString;
-    
+
     /* exit longjump buffer */
 #if defined(UNIX_HOST) || defined(WIN32)
     jmp_buf PicocExitBuf;
@@ -461,7 +470,7 @@ struct Picoc_Struct
 #ifdef SURVEYOR_HOST
     int PicocExitBuf[41];
 #endif
-    
+
     /* string table */
     struct Table StringTable;
     struct TableEntry *StringHashTable[STRING_TABLE_SIZE];

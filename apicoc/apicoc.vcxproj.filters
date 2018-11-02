@@ -9,7 +9,6 @@
     <ClCompile Include="include.c" />
     <ClCompile Include="lex.c" />
     <ClCompile Include="parse.c" />
-    <ClCompile Include="picoc.c" />
     <ClCompile Include="platform.c" />
     <ClCompile Include="table.c" />
     <ClCompile Include="type.c" />

@@ -3,5 +3,39 @@
   JAVA_HOME=D:\javaSdkPath
   NDK_ROOT=C:\ProgramData\Microsoft\AndroidNDK64\android-ndk-r13b
   apicoc.cpp
-  picoc.c
+  clibrary.c
+  ctype.c
+  errno.c
+  math.c
+  stdbool.c
+  stdio.c
+  cstdlib\stdio.c: In function 'StdioBasePrintf':
+cstdlib\stdio.c(186,23): warning : cast from pointer to integer of different size [-Wpointer-to-int-cast]
+       LOGI("%lld %lld",((long long)(Parser->pc)),((long long)(Parser->pc->CStdOut)));
+                         ^
+  cstdlib\stdio.c:3:74: note: in definition of macro 'LOGI'
+   #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
+                                                                            ^
+cstdlib\stdio.c(186,49): warning : cast from pointer to integer of different size [-Wpointer-to-int-cast]
+       LOGI("%lld %lld",((long long)(Parser->pc)),((long long)(Parser->pc->CStdOut)));
+                                                   ^
+  cstdlib\stdio.c:3:74: note: in definition of macro 'LOGI'
+   #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
+                                                                            ^
+  stdlib.c
+  string.c
+  time.c
+  unistd.c
+  debug.c
+  expression.c
+  heap.c
+  include.c
+  lex.c
+  parse.c
+  platform.c
+  library_unix.c
+  platform_unix.c
+  table.c
+  type.c
+  variable.c
   apicoc.vcxproj -> C:\Users\Mr.小世界\Documents\Visual Studio 2017\Projects\apicoc\ARM\Release\libapicoc.so

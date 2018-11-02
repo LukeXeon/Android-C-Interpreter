@@ -1,4 +1,7 @@
 /* stdio.h library for large systems - small embedded systems use clibrary.c instead */
+#include <android/log.h>
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
+#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "apicoc", __VA_ARGS__))
 #ifndef BUILTIN_MINI_STDLIB
 
 #include <errno.h>
@@ -180,6 +183,7 @@ void StdioFprintfPointer(StdOutStream *Stream, const char *Format, void *Value)
 /* internal do-anything v[s][n]printf() formatting system with output to strings or FILE * */
 int StdioBasePrintf(struct ParseState *Parser, FILE *Stream, char *StrOut, int StrOutLen, char *Format, struct StdVararg *Args)
 {
+    LOGI("%lld %lld",((long long)(Parser->pc)),((long long)(Parser->pc->CStdOut)));
     struct Value *ThisArg = Args->Param[0];
     int ArgCount = 0;
     char *FPos;
@@ -520,13 +524,13 @@ void StdioGetchar(struct ParseState *Parser, struct Value *ReturnValue, struct V
     ReturnValue->Val->Integer = getchar();
 }
 
-void StdioPrintf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
-{
+void StdioPrintf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
     struct StdVararg PrintfArgs;
-    
+
     PrintfArgs.Param = Param;
-    PrintfArgs.NumArgs = NumArgs-1;
-    ReturnValue->Val->Integer = StdioBasePrintf(Parser, stdout, NULL, 0, Param[0]->Val->Pointer, &PrintfArgs);
+    PrintfArgs.NumArgs = NumArgs - 1;
+    ReturnValue->Val->Integer = StdioBasePrintf(Parser, Parser->pc->CStdOut, NULL, 0,
+                                                Param[0]->Val->Pointer, &PrintfArgs);
 }
 
 void StdioVprintf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -707,7 +711,7 @@ void StdioSetupFunc(Picoc *pc)
     
     /* define stdin, stdout and stderr */
     VariableDefinePlatformVar(pc, NULL, "stdin", FilePtrType, (union AnyValue *)&stdinValue, FALSE);
-    VariableDefinePlatformVar(pc, NULL, "stdout", FilePtrType, (union AnyValue *)&stdoutValue, FALSE);
+    VariableDefinePlatformVar(pc, NULL, "stdout", FilePtrType, (union AnyValue *)&(pc->CStdOut), FALSE);
     VariableDefinePlatformVar(pc, NULL, "stderr", FilePtrType, (union AnyValue *)&stderrValue, FALSE);
 
     /* define NULL, TRUE and FALSE */
