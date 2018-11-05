@@ -9,19 +9,6 @@
   math.c
   stdbool.c
   stdio.c
-  cstdlib\stdio.c: In function 'StdioBasePrintf':
-cstdlib\stdio.c(186,23): warning : cast from pointer to integer of different size [-Wpointer-to-int-cast]
-       LOGI("%lld %lld",((long long)(Parser->pc)),((long long)(Parser->pc->CStdOut)));
-                         ^
-  cstdlib\stdio.c:3:74: note: in definition of macro 'LOGI'
-   #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
-                                                                            ^
-cstdlib\stdio.c(186,49): warning : cast from pointer to integer of different size [-Wpointer-to-int-cast]
-       LOGI("%lld %lld",((long long)(Parser->pc)),((long long)(Parser->pc->CStdOut)));
-                                                   ^
-  cstdlib\stdio.c:3:74: note: in definition of macro 'LOGI'
-   #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
-                                                                            ^
   stdlib.c
   string.c
   time.c
@@ -31,6 +18,9 @@ cstdlib\stdio.c(186,49): warning : cast from pointer to integer of different siz
   heap.c
   include.c
   lex.c
+  ConvertUTF.cpp
+  linenoise.cpp
+  wcwidth.cpp
   parse.c
   platform.c
   library_unix.c

@@ -579,7 +579,7 @@ void StdioFscanf(struct ParseState *Parser, struct Value *ReturnValue, struct Va
 void StdioSscanf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
     struct StdVararg ScanfArgs;
-    
+
     ScanfArgs.Param = Param+1;
     ScanfArgs.NumArgs = NumArgs-2;
     ReturnValue->Val->Integer = StdioBaseScanf(Parser, NULL, Param[0]->Val->Pointer, Param[1]->Val->Pointer, &ScanfArgs);

@@ -456,10 +456,6 @@ struct Picoc_Struct {
     IOFILE *CStdErr;
     IOFILE *CStdOut;
 
-    /*JNIEnv*/
-
-    JNIEnv *JavaEnv;
-
     /* the picoc version string */
     const char *VersionString;
 
