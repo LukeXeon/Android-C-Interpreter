@@ -22,7 +22,6 @@ static jlong ToLong(Picoc*ptr) {
 }
 
 
-
 EXTERN_C
 JNIEXPORT jint JNICALL
 Java_edu_guet_apicoc_Interpreter_createSub0(JNIEnv *env, jclass type, jobjectArray srcNames,
@@ -87,10 +86,13 @@ Java_edu_guet_apicoc_Interpreter_createSub0(JNIEnv *env, jclass type, jobjectArr
 		PicocInitialise(picoc, getenv("STACKSIZE") ? atoi(getenv("STACKSIZE")) : PICOC_STACK_SIZE);
 		PicocIncludeAllSystemHeaders(picoc);
 		picoc->CStdIn = fdopen(stdin_pipe[0], "r");
+		dup2(stdin_pipe[0],STDIN_FILENO);
 		picoc->CStdOut = fdopen(stdout_pipe[1], "w");
 		setvbuf(picoc->CStdOut, NULL, _IONBF, 0);
+		dup2(stdout_pipe[1],STDOUT_FILENO);
 		picoc->CStdErr = fdopen(stderr_pipe[1], "w");
 		setvbuf(picoc->CStdErr, NULL, _IONBF, 0);
+		dup2(stderr_pipe[1],STDERR_FILENO);//重定向到管道
 		if (c_src_names != nullptr) {
 			for (int i = 0; i < src_or_file_count; ++i) {
 				PicocParse(picoc, c_src_names[i],
@@ -218,9 +220,6 @@ Java_edu_guet_apicoc_Interpreter_callMain0(JNIEnv *env, jclass type, jlong ptr, 
 		cargs[i] = nullptr;
 	}
 	delete cargs;
-	if (picoc->DebugManualBreak) {
-		env->ThrowNew(caches.runtimeExClass, "C Script Runtime Error");
-	}
 	return picoc->PicocExitValue;
 }
 

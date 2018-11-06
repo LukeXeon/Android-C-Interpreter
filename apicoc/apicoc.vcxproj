@@ -155,7 +155,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
       <CLanguageStandard>c99</CLanguageStandard>
       <CppLanguageStandard>c++11</CppLanguageStandard>
     </ClCompile>
@@ -196,7 +197,6 @@
     <ClInclude Include="interpreter.h" />
     <ClInclude Include="linenoise-ng\ConvertUTF.h" />
     <ClInclude Include="linenoise-ng\linenoise.h" />
-    <ClInclude Include="pch.h" />
     <ClInclude Include="picoc.h" />
     <ClInclude Include="platform.h" />
   </ItemGroup>

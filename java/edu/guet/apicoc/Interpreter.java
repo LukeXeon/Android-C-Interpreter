@@ -128,7 +128,7 @@ public final class Interpreter implements AutoCloseable
             AccessController.doPrivileged(new PrivilegedExceptionAction<Void>()
             {
                 @Override
-                public Void run() throws Exception
+                public Void run() throws IOException
                 {
                     stdin.close();
                     stdout.close();
@@ -164,7 +164,7 @@ public final class Interpreter implements AutoCloseable
             @Override
             public Void run()
             {
-                addSource0(handler, fileName, source);
+                addSource0(handler, Objects.requireNonNull(fileName), Objects.requireNonNull(source));
                 return null;
             }
         });
@@ -223,11 +223,8 @@ public final class Interpreter implements AutoCloseable
         private InputStream stdout;
         private OutputStream stdin;
 
-
-
         private InterpreterProcess(final String[] srcNames, final String[] srcOrFile, final String[] args)
         {
-            Executors.newCachedThreadPool();
             try
             {
                 AccessController.doPrivileged(new PrivilegedExceptionAction<Object>()

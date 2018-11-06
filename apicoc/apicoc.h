@@ -1,5 +1,17 @@
 #pragma once
-#include "pch.h"
+#define BINGE_EXTERN_C extern "C"{
+#define END_EXTERN_C }
+#define EXTERN_C extern "C"
+
+#include <pthread.h>
+#include <jni.h>
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <android/log.h>
 BINGE_EXTERN_C
 #include "picoc.h"
 END_EXTERN_C
