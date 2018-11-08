@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
  * Created by Mr.小世界 on 2018/10/31.
  */
 
+@SuppressWarnings("JniMissingFunction")
 public final class Interpreter implements AutoCloseable
 {
     private final static String TAG = "Interpreter";
@@ -38,33 +39,26 @@ public final class Interpreter implements AutoCloseable
 
     static
     {
-        System.loadLibrary("native-lib");
-        staticInit0();
+        System.loadLibrary("apicoc");
     }
 
     public Interpreter()
     {
-        try
+        AccessController.doPrivileged(new PrivilegedAction<Void>()
         {
-            AccessController.doPrivileged(new PrivilegedExceptionAction<Void>()
+            @Override
+            public Void run()
             {
-                @Override
-                public Void run() throws Exception
-                {
-                    FileDescriptor stdinFd = new FileDescriptor();
-                    FileDescriptor stdoutFd = new FileDescriptor();
-                    FileDescriptor stderrFd = new FileDescriptor();
-                    handler = init0(stdinFd, stdoutFd, stderrFd);
-                    stdin = createOutputStream(stdinFd);
-                    stdout = createInputStream(stdoutFd);
-                    stderr = createInputStream(stderrFd);
-                    return null;
-                }
-            });
-        } catch (PrivilegedActionException e)
-        {
-            e.printStackTrace();
-        }
+                FileDescriptor stdinFd = new FileDescriptor();
+                FileDescriptor stdoutFd = new FileDescriptor();
+                FileDescriptor stderrFd = new FileDescriptor();
+                handler = init0(stdinFd, stdoutFd, stderrFd);
+                stdin = createOutputStream(stdinFd);
+                stdout = createInputStream(stdoutFd);
+                stderr = createInputStream(stderrFd);
+                return null;
+            }
+        });
     }
 
     public OutputStream getOutputStream()
@@ -215,7 +209,15 @@ public final class Interpreter implements AutoCloseable
     {
         private static final String TAG = "InterpreterProcess";
         private static final ExecutorService processReaperExecutor
-                = Executors.newCachedThreadPool();
+                = AccessController.doPrivileged(new PrivilegedAction<ExecutorService>()
+        {
+            @Override
+            public ExecutorService run()
+            {
+                return Executors.newCachedThreadPool();
+            }
+        });
+
         private int pid;
         private int exitCode;
         private boolean hasExited;
@@ -225,42 +227,36 @@ public final class Interpreter implements AutoCloseable
 
         private InterpreterProcess(final String[] srcNames, final String[] srcOrFile, final String[] args)
         {
-            try
+            AccessController.doPrivileged(new PrivilegedAction<Object>()
             {
-                AccessController.doPrivileged(new PrivilegedExceptionAction<Object>()
+                @Override
+                public Object run()
                 {
-                    @Override
-                    public Object run() throws Exception
+                    FileDescriptor stdinFd = new FileDescriptor();
+                    FileDescriptor stdoutFd = new FileDescriptor();
+                    FileDescriptor stderrFd = new FileDescriptor();
+                    pid = createSub0(srcNames, srcOrFile, args, stdinFd, stdoutFd, stderrFd);
+                    Log.i(TAG, "run: " + pid);
+                    stdin = createOutputStream(stdinFd);
+                    stdout = createInputStream(stdoutFd);
+                    stderr = createInputStream(stderrFd);
+                    processReaperExecutor.execute(new Runnable()
                     {
-                        FileDescriptor stdinFd = new FileDescriptor();
-                        FileDescriptor stdoutFd = new FileDescriptor();
-                        FileDescriptor stderrFd = new FileDescriptor();
-                        pid = createSub0(srcNames, srcOrFile, args, stdinFd, stdoutFd, stderrFd);
-                        Log.i(TAG, "run: " + pid);
-                        stdin = createOutputStream(stdinFd);
-                        stdout = createInputStream(stdoutFd);
-                        stderr = createInputStream(stderrFd);
-                        processReaperExecutor.execute(new Runnable()
+                        @Override
+                        public void run()
                         {
-                            @Override
-                            public void run()
+                            exitCode = waitSub0(pid);
+                            Log.i(TAG, "exitCode: " + exitCode);
+                            hasExited = true;
+                            synchronized (InterpreterProcess.this)
                             {
-                                exitCode = waitSub0(pid);
-                                Log.i(TAG, "exitCode: " + exitCode);
-                                hasExited = true;
-                                synchronized (InterpreterProcess.this)
-                                {
-                                    InterpreterProcess.this.notifyAll();
-                                }
+                                InterpreterProcess.this.notifyAll();
                             }
-                        });
-                        return null;
-                    }
-                });
-            } catch (PrivilegedActionException e)
-            {
-                e.printStackTrace();
-            }
+                        }
+                    });
+                    return null;
+                }
+            });
         }
 
         @Override
@@ -330,33 +326,46 @@ public final class Interpreter implements AutoCloseable
             {
             }
         }
-
     }
 
-    private static OutputStream createOutputStream(FileDescriptor fileDescriptor)
+    private static OutputStream createOutputStream(final FileDescriptor fileDescriptor)
     {
-        try
+        return AccessController.doPrivileged(new PrivilegedAction<OutputStream>()
         {
-            return FileOutputStream.class
-                    .getConstructor(FileDescriptor.class, boolean.class)
-                    .newInstance(fileDescriptor, true);
-        } catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
+            @Override
+            public OutputStream run()
+            {
+                try
+                {
+                    return FileOutputStream.class
+                            .getConstructor(FileDescriptor.class, boolean.class)
+                            .newInstance(fileDescriptor, true);
+                } catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 
-    private static InputStream createInputStream(FileDescriptor fileDescriptor)
+    private static InputStream createInputStream(final FileDescriptor fileDescriptor)
     {
-        try
+        return AccessController.doPrivileged(new PrivilegedAction<InputStream>()
         {
-            return new BufferedInputStream(FileInputStream.class
-                    .getConstructor(FileDescriptor.class, boolean.class)
-                    .newInstance(fileDescriptor, true));
-        } catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
+            @Override
+            public InputStream run()
+            {
+                try
+                {
+                    return new BufferedInputStream(FileInputStream.class
+                            .getConstructor(FileDescriptor.class, boolean.class)
+                            .newInstance(fileDescriptor, true));
+                } catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 
 
@@ -370,8 +379,6 @@ public final class Interpreter implements AutoCloseable
     private static native int waitSub0(int pid);
 
     private static native void killSub0(int pid);
-
-    private static native void staticInit0();
 
     private static native long init0(FileDescriptor stdinFd,
                                      FileDescriptor stdoutFd,

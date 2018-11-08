@@ -1,28 +1,30 @@
 /* stdlib.h library for large systems - small embedded systems use clibrary.c instead */
 #include "../interpreter.h"
 
+
 #ifndef BUILTIN_MINI_STDLIB
 
 static int Stdlib_ZeroValue = 0;
 
-char *itoa(int num,char*str,int radix) {/*索引表*/
+char *itoa(int num,char*str,int radix) {
+	/*索引表*/
     char index[] = "0123456789ABCDEF";
     unsigned unum;/*中间变量*/
     int i = 0, j, k;
-/*确定unum的值*/
+	/*确定unum的值*/
     if (radix == 10 && num < 0)/*十进制负数*/
     {
         unum = (unsigned) -num;
         str[i++] = '-';
     }
     else unum = (unsigned) num;/*其他情况*/
-/*转换*/
+	/*转换*/
     do {
         str[i++] = index[unum % (unsigned) radix];
         unum /= radix;
     } while (unum);
     str[i] = '\0';
-/*逆序*/
+	/*逆序*/
     if (str[0] == '-')k = 1;/*+进制-数*/
     else k = 0;
     char temp;
@@ -76,22 +78,22 @@ void StdlibStrtoul(struct ParseState *Parser, struct Value *ReturnValue, struct 
 
 void StdlibMalloc(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    ReturnValue->Val->Pointer = malloc(Param[0]->Val->Integer);
+	ReturnValue->Val->Pointer = pool_malloc(Parser->pc->pool,Param[0]->Val->Integer);
 }
 
 void StdlibCalloc(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    ReturnValue->Val->Pointer = calloc(Param[0]->Val->Integer, Param[1]->Val->Integer);
+	ReturnValue->Val->Pointer = pool_calloc(Parser->pc->pool, Param[0]->Val->Integer, Param[1]->Val->Integer);
 }
 
 void StdlibRealloc(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    ReturnValue->Val->Pointer = realloc(Param[0]->Val->Pointer, Param[1]->Val->Integer);
+	ReturnValue->Val->Pointer = pool_realloc(Parser->pc->pool, Param[0]->Val->Pointer, Param[1]->Val->Integer);
 }
 
 void StdlibFree(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    free(Param[0]->Val->Pointer);
+	pool_free(Parser->pc->pool, Param[0]->Val->Pointer);
 }
 
 void StdlibRand(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)

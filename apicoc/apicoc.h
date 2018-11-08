@@ -12,8 +12,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <android/log.h>
-#include <map>
-#include <mutex>
+#include <pthread.h>
+#include <signal.h>
 BINGE_EXTERN_C
 #include "picoc.h"
 END_EXTERN_C

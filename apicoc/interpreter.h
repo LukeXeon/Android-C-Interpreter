@@ -6,6 +6,7 @@
 #define INTERPRETER_H
 
 #include "platform.h"
+#include "pool.h"
 #include <jni.h>
 
 
@@ -362,115 +363,120 @@ struct IncludeLibrary
 
 /* the entire state of the picoc system */
 struct Picoc_Struct {
-    /* parser global data */
-    struct Table GlobalTable;
-    struct CleanupTokenNode *CleanupTokenList;
-    struct TableEntry *GlobalHashTable[GLOBAL_TABLE_SIZE];
+	/* parser global data */
+	struct Table GlobalTable;
+	struct CleanupTokenNode *CleanupTokenList;
+	struct TableEntry *GlobalHashTable[GLOBAL_TABLE_SIZE];
 
-    /* lexer global data */
-    struct TokenLine *InteractiveHead;
-    struct TokenLine *InteractiveTail;
-    struct TokenLine *InteractiveCurrentLine;
-    int LexUseStatementPrompt;
-    union AnyValue LexAnyValue;
-    struct Value LexValue;
-    struct Table ReservedWordTable;
-    struct TableEntry *ReservedWordHashTable[RESERVED_WORD_TABLE_SIZE];
+	/* lexer global data */
+	struct TokenLine *InteractiveHead;
+	struct TokenLine *InteractiveTail;
+	struct TokenLine *InteractiveCurrentLine;
+	int LexUseStatementPrompt;
+	union AnyValue LexAnyValue;
+	struct Value LexValue;
+	struct Table ReservedWordTable;
+	struct TableEntry *ReservedWordHashTable[RESERVED_WORD_TABLE_SIZE];
 
-    /* the table of string literal values */
-    struct Table StringLiteralTable;
-    struct TableEntry *StringLiteralHashTable[STRING_LITERAL_TABLE_SIZE];
+	/* the table of string literal values */
+	struct Table StringLiteralTable;
+	struct TableEntry *StringLiteralHashTable[STRING_LITERAL_TABLE_SIZE];
 
-    /* the stack */
-    struct StackFrame *TopStackFrame;
+	/* the stack */
+	struct StackFrame *TopStackFrame;
 
-    /* the value passed to exit() */
-    int PicocExitValue;
+	/* the value passed to exit() */
+	int PicocExitValue;
 
-    /* a list of libraries we can include */
-    struct IncludeLibrary *IncludeLibList;
+	/* a list of libraries we can include */
+	struct IncludeLibrary *IncludeLibList;
 
-    /* heap memory */
+	/* heap memory */
 #ifdef USE_MALLOC_STACK
-    unsigned char *HeapMemory;
-    /* stack memory since our heap is malloc()ed */
-    void *HeapBottom;
-    /* the bottom of the (downward-growing) heap */
-    void *StackFrame;
-    /* the current stack frame */
-    void *HeapStackTop;                 /* the top of the stack */
+	unsigned char *HeapMemory;
+	/* stack memory since our heap is malloc()ed */
+	void *HeapBottom;
+	/* the bottom of the (downward-growing) heap */
+	void *StackFrame;
+	/* the current stack frame */
+	void *HeapStackTop;                 /* the top of the stack */
 #else
 # ifdef SURVEYOR_HOST
-    unsigned char *HeapMemory;          /* all memory - stack and heap */
-    void *HeapBottom;                   /* the bottom of the (downward-growing) heap */
-    void *StackFrame;                   /* the current stack frame */
-    void *HeapStackTop;                 /* the top of the stack */
-    void *HeapMemStart;
+	unsigned char *HeapMemory;          /* all memory - stack and heap */
+	void *HeapBottom;                   /* the bottom of the (downward-growing) heap */
+	void *StackFrame;                   /* the current stack frame */
+	void *HeapStackTop;                 /* the top of the stack */
+	void *HeapMemStart;
 # else
-    unsigned char HeapMemory[HEAP_SIZE];  /* all memory - stack and heap */
-    void *HeapBottom;                   /* the bottom of the (downward-growing) heap */
-    void *StackFrame;                   /* the current stack frame */
-    void *HeapStackTop;                 /* the top of the stack */
+	unsigned char HeapMemory[HEAP_SIZE];  /* all memory - stack and heap */
+	void *HeapBottom;                   /* the bottom of the (downward-growing) heap */
+	void *StackFrame;                   /* the current stack frame */
+	void *HeapStackTop;                 /* the top of the stack */
 # endif
 #endif
 
-    struct AllocNode *FreeListBucket[FREELIST_BUCKETS];
-    /* we keep a pool of freelist buckets to reduce fragmentation */
-    struct AllocNode *FreeListBig;                           /* free memory which doesn't fit in a bucket */
+	struct AllocNode *FreeListBucket[FREELIST_BUCKETS];
+	/* we keep a pool of freelist buckets to reduce fragmentation */
+	struct AllocNode *FreeListBig;                           /* free memory which doesn't fit in a bucket */
 
-    /* types */
-    struct ValueType UberType;
-    struct ValueType IntType;
-    struct ValueType ShortType;
-    struct ValueType CharType;
-    struct ValueType LongType;
-    struct ValueType UnsignedIntType;
-    struct ValueType UnsignedShortType;
-    struct ValueType UnsignedLongType;
-    struct ValueType UnsignedCharType;
+	/* types */
+	struct ValueType UberType;
+	struct ValueType IntType;
+	struct ValueType ShortType;
+	struct ValueType CharType;
+	struct ValueType LongType;
+	struct ValueType UnsignedIntType;
+	struct ValueType UnsignedShortType;
+	struct ValueType UnsignedLongType;
+	struct ValueType UnsignedCharType;
 #ifndef NO_FP
-    struct ValueType FPType;
+	struct ValueType FPType;
 #endif
-    struct ValueType VoidType;
-    struct ValueType TypeType;
-    struct ValueType FunctionType;
-    struct ValueType MacroType;
-    struct ValueType EnumType;
-    struct ValueType GotoLabelType;
-    struct ValueType *CharPtrType;
-    struct ValueType *CharPtrPtrType;
-    struct ValueType *CharArrayType;
-    struct ValueType *VoidPtrType;
+	struct ValueType VoidType;
+	struct ValueType TypeType;
+	struct ValueType FunctionType;
+	struct ValueType MacroType;
+	struct ValueType EnumType;
+	struct ValueType GotoLabelType;
+	struct ValueType *CharPtrType;
+	struct ValueType *CharPtrPtrType;
+	struct ValueType *CharArrayType;
+	struct ValueType *VoidPtrType;
 
-    /* debugger */
-    struct Table BreakpointTable;
-    struct TableEntry *BreakpointHashTable[BREAKPOINT_TABLE_SIZE];
-    int BreakpointCount;
-    int DebugManualBreak;
+	/* debugger */
+	struct Table BreakpointTable;
+	struct TableEntry *BreakpointHashTable[BREAKPOINT_TABLE_SIZE];
+	int BreakpointCount;
+	int DebugManualBreak;
 
-    /* C library */
-    int BigEndian;
-    int LittleEndian;
+	/* C library */
+	int BigEndian;
+	int LittleEndian;
 
-    IOFILE *CStdIn;
-    IOFILE *CStdErr;
-    IOFILE *CStdOut;
+	IOFILE *CStdIn;
+	IOFILE *CStdErr;
+	IOFILE *CStdOut;
 
-    /* the picoc version string */
-    const char *VersionString;
+	/* the picoc version string */
+	const char *VersionString;
 
-    /* exit longjump buffer */
+	/* exit longjump buffer */
 #if defined(UNIX_HOST) || defined(WIN32)
-    jmp_buf PicocExitBuf;
+	jmp_buf PicocExitBuf;
 #endif
 #ifdef SURVEYOR_HOST
-    int PicocExitBuf[41];
+	int PicocExitBuf[41];
 #endif
 
-    /* string table */
-    struct Table StringTable;
-    struct TableEntry *StringHashTable[STRING_TABLE_SIZE];
-    char *StrEmpty;
+	/* string table */
+	struct Table StringTable;
+	struct TableEntry *StringHashTable[STRING_TABLE_SIZE];
+	char *StrEmpty;
+
+	/* memory pool */
+
+	pool_t pool;
+
 };
 
 /* table.c */
