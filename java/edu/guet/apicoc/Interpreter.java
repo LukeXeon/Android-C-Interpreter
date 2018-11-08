@@ -4,6 +4,8 @@ import android.support.annotation.WorkerThread;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -16,6 +18,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +35,9 @@ import java.util.concurrent.Executors;
 public final class Interpreter implements AutoCloseable
 {
     private final static String TAG = "Interpreter";
-    private InputStream stderr;
-    private InputStream stdout;
-    private OutputStream stdin;
+    private InterpreterInputStream stderr;
+    private InterpreterInputStream stdout;
+    private InterpreterOutputStream stdin;
     private long handler;
 
     static
@@ -53,9 +56,9 @@ public final class Interpreter implements AutoCloseable
                 FileDescriptor stdoutFd = new FileDescriptor();
                 FileDescriptor stderrFd = new FileDescriptor();
                 handler = init0(stdinFd, stdoutFd, stderrFd);
-                stdin = createOutputStream(stdinFd);
-                stdout = createInputStream(stdoutFd);
-                stderr = createInputStream(stderrFd);
+                stdin = new InterpreterOutputStream(stdinFd);
+                stdout = new InterpreterInputStream(stdoutFd);
+                stderr = new InterpreterInputStream(stderrFd);
                 return null;
             }
         });
@@ -221,9 +224,9 @@ public final class Interpreter implements AutoCloseable
         private int pid;
         private int exitCode;
         private boolean hasExited;
-        private InputStream stderr;
-        private InputStream stdout;
-        private OutputStream stdin;
+        private InterpreterInputStream stderr;
+        private InterpreterInputStream stdout;
+        private InterpreterOutputStream stdin;
 
         private InterpreterProcess(final String[] srcNames, final String[] srcOrFile, final String[] args)
         {
@@ -233,25 +236,29 @@ public final class Interpreter implements AutoCloseable
                 public Object run()
                 {
                     FileDescriptor stdinFd = new FileDescriptor();
-                    FileDescriptor stdoutFd = new FileDescriptor();
+                    final FileDescriptor stdoutFd = new FileDescriptor();
                     FileDescriptor stderrFd = new FileDescriptor();
                     pid = createSub0(srcNames, srcOrFile, args, stdinFd, stdoutFd, stderrFd);
                     Log.i(TAG, "run: " + pid);
-                    stdin = createOutputStream(stdinFd);
-                    stdout = createInputStream(stdoutFd);
-                    stderr = createInputStream(stderrFd);
+                    stdin = new InterpreterOutputStream(stdinFd);
+                    stdout = new InterpreterInputStream(stdoutFd);
+                    stderr = new InterpreterInputStream(stderrFd);
                     processReaperExecutor.execute(new Runnable()
                     {
                         @Override
                         public void run()
                         {
-                            exitCode = waitSub0(pid);
-                            Log.i(TAG, "exitCode: " + exitCode);
+                            int exitCode = waitSub0(pid);
                             hasExited = true;
                             synchronized (InterpreterProcess.this)
                             {
+                                hasExited = true;
+                                InterpreterProcess.this.exitCode = exitCode;
                                 InterpreterProcess.this.notifyAll();
                             }
+                            stdin.processExited();
+                            stdout.processExited();
+                            stderr.processExited();
                         }
                     });
                     return null;
@@ -328,46 +335,149 @@ public final class Interpreter implements AutoCloseable
         }
     }
 
-    private static OutputStream createOutputStream(final FileDescriptor fileDescriptor)
+    private static class InterpreterOutputStream extends BufferedOutputStream
     {
-        return AccessController.doPrivileged(new PrivilegedAction<OutputStream>()
+        private InterpreterOutputStream(FileDescriptor fileDescriptor)
         {
-            @Override
-            public OutputStream run()
+            super(createFileOutputStream(fileDescriptor));
+        }
+
+        private static FileOutputStream createFileOutputStream(final FileDescriptor fileDescriptor)
+        {
+            return AccessController.doPrivileged(new PrivilegedAction<FileOutputStream>()
+            {
+                @Override
+                public FileOutputStream run()
+                {
+                    try
+                    {
+                        return FileOutputStream.class
+                                .getConstructor(FileDescriptor.class, boolean.class)
+                                .newInstance(fileDescriptor, true);
+                    } catch (Exception e)
+                    {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        }
+
+        private synchronized void processExited()
+        {
+            OutputStream out = this.out;
+            if (out != null)
             {
                 try
                 {
-                    return FileOutputStream.class
-                            .getConstructor(FileDescriptor.class, boolean.class)
-                            .newInstance(fileDescriptor, true);
-                } catch (Exception e)
+                    out.close();
+                } catch (IOException ignored)
                 {
-                    throw new RuntimeException(e);
+                    // We know of no reason to get an IOException, but if
+                    // we do, there's nothing else to do but carry on.
                 }
+                this.out = NullOutputStream.INSTANCE;
             }
-        });
+        }
     }
 
-    private static InputStream createInputStream(final FileDescriptor fileDescriptor)
+    private static class InterpreterInputStream extends BufferedInputStream
     {
-        return AccessController.doPrivileged(new PrivilegedAction<InputStream>()
+        private InterpreterInputStream(FileDescriptor fileDescriptor)
         {
-            @Override
-            public InputStream run()
+            super(createFileInputStream(fileDescriptor));
+        }
+
+        private static FileInputStream createFileInputStream(final FileDescriptor fileDescriptor)
+        {
+            return AccessController.doPrivileged(new PrivilegedAction<FileInputStream>()
             {
-                try
+                @Override
+                public FileInputStream run()
                 {
-                    return new BufferedInputStream(FileInputStream.class
-                            .getConstructor(FileDescriptor.class, boolean.class)
-                            .newInstance(fileDescriptor, true));
-                } catch (Exception e)
-                {
-                    throw new RuntimeException(e);
+                    try
+                    {
+                        return FileInputStream.class.getConstructor(FileDescriptor.class, boolean.class)
+                                .newInstance(fileDescriptor, true);
+                    } catch (Exception e)
+                    {
+                        throw new RuntimeException(e);
+                    }
                 }
+            });
+        }
+
+        private static byte[] drainInputStream(InputStream in)
+                throws IOException
+        {
+            if (in == null) return null;
+            int n = 0;
+            int j;
+            byte[] a = null;
+            while ((j = in.available()) > 0)
+            {
+                a = (a == null) ? new byte[j] : Arrays.copyOf(a, n + j);
+                n += in.read(a, n, j);
             }
-        });
+            return (a == null || n == a.length) ? a : Arrays.copyOf(a, n);
+        }
+
+        synchronized void processExited()
+        {
+            // Most BufferedInputStream methods are synchronized, but close()
+            // is not, and so we have to handle concurrent racing close().
+            try
+            {
+                InputStream in = this.in;
+                if (in != null)
+                {
+                    byte[] stragglers = drainInputStream(in);
+                    in.close();
+                    this.in = (stragglers == null) ? NullInputStream.INSTANCE :
+                            new ByteArrayInputStream(stragglers);
+                    if (buf == null) // asynchronous close()?
+                    {
+                        this.in = null;
+                    }
+                }
+            } catch (IOException ignored)
+            {
+                // probably an asynchronous close().
+            }
+        }
     }
 
+    private static class NullInputStream extends InputStream
+    {
+        private static final NullInputStream INSTANCE = new NullInputStream();
+
+        private NullInputStream()
+        {
+        }
+
+        public int read()
+        {
+            return -1;
+        }
+
+        public int available()
+        {
+            return 0;
+        }
+    }
+
+    private static class NullOutputStream extends OutputStream
+    {
+        private static final NullOutputStream INSTANCE = new NullOutputStream();
+
+        private NullOutputStream()
+        {
+        }
+
+        public void write(int b) throws IOException
+        {
+            throw new IOException("Stream closed");
+        }
+    }
 
     private static native int createSub0(String[] srcNames,
                                          String[] srcOrFile,
