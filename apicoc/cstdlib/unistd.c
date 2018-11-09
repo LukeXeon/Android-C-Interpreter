@@ -69,7 +69,7 @@ void UnistdDup2(struct ParseState *Parser, struct Value *ReturnValue, struct Val
 
 void Unistd_Exit(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    _exit(Param[0]->Val->Integer);
+	PlatformExit(Parser->pc, Param[0]->Val->Integer);
 }
 
 void UnistdFchown(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)

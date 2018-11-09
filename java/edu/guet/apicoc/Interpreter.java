@@ -339,10 +339,10 @@ public final class Interpreter implements AutoCloseable
     {
         private InterpreterOutputStream(FileDescriptor fileDescriptor)
         {
-            super(createFileOutputStream(fileDescriptor));
+            super(formFd(fileDescriptor));
         }
 
-        private static FileOutputStream createFileOutputStream(final FileDescriptor fileDescriptor)
+        private static FileOutputStream formFd(final FileDescriptor fileDescriptor)
         {
             return AccessController.doPrivileged(new PrivilegedAction<FileOutputStream>()
             {
@@ -384,10 +384,10 @@ public final class Interpreter implements AutoCloseable
     {
         private InterpreterInputStream(FileDescriptor fileDescriptor)
         {
-            super(createFileInputStream(fileDescriptor));
+            super(formFd(fileDescriptor));
         }
 
-        private static FileInputStream createFileInputStream(final FileDescriptor fileDescriptor)
+        private static FileInputStream formFd(final FileDescriptor fileDescriptor)
         {
             return AccessController.doPrivileged(new PrivilegedAction<FileInputStream>()
             {
@@ -421,7 +421,7 @@ public final class Interpreter implements AutoCloseable
             return (a == null || n == a.length) ? a : Arrays.copyOf(a, n);
         }
 
-        synchronized void processExited()
+        private synchronized void processExited()
         {
             // Most BufferedInputStream methods are synchronized, but close()
             // is not, and so we have to handle concurrent racing close().
@@ -454,11 +454,13 @@ public final class Interpreter implements AutoCloseable
         {
         }
 
+        @Override
         public int read()
         {
             return -1;
         }
 
+        @Override
         public int available()
         {
             return 0;
@@ -473,6 +475,7 @@ public final class Interpreter implements AutoCloseable
         {
         }
 
+        @Override
         public void write(int b) throws IOException
         {
             throw new IOException("Stream closed");

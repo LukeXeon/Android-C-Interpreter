@@ -1,6 +1,6 @@
 #include "apicoc.h"
 #include "interpreter.h"
-
+using namespace std;
 #define PICOC_STACK_SIZE (128*1024)              /* space for the the stack */
 
 static struct {
@@ -89,24 +89,29 @@ Java_edu_guet_apicoc_Interpreter_createSub0(JNIEnv *env, jclass type, jobjectArr
 	c_length = env->GetArrayLength(srcOrFile);
 	if (c_length != 0)
 	{
+		function<void(int)> action = [&env, &c_src_or_file, &srcOrFile](int index)->void
+		{
+			jstring src_string = (jstring)env->GetObjectArrayElement(srcOrFile, index);
+			const char *c_src = env->GetStringUTFChars(src_string, 0);
+			c_src_or_file[index] = strcpy(new char[strlen(c_src) + 1], c_src);
+			env->ReleaseStringUTFChars(src_string, c_src);
+		};
 		if (srcNames != nullptr)
 		{
 			c_src_names = new char*[c_length];
+			action = [action, &c_src_names, &env, &srcNames](int index)->void
+			{
+				jstring name_string = (jstring)env->GetObjectArrayElement(srcNames, index);
+				const char *c_name = env->GetStringUTFChars(name_string, 0);
+				c_src_names[index] = strcpy(new char[strlen(c_name) + 1], c_name);
+				env->ReleaseStringUTFChars(name_string, c_name);
+				action(index);
+			};
 		}
 		c_src_or_file = new char*[c_length];
 		for (int i = 0; i < c_length; i++)
 		{
-			if (c_src_names != nullptr)
-			{
-				jstring name_string = (jstring)env->GetObjectArrayElement(srcNames, i);
-				const char *c_name = env->GetStringUTFChars(name_string, 0);
-				c_src_names[i] = strcpy(new char[strlen(c_name) + 1], c_name);
-				env->ReleaseStringUTFChars(name_string, c_name);
-			}
-			jstring src_string = (jstring)env->GetObjectArrayElement(srcOrFile, i);
-			const char *c_src = env->GetStringUTFChars(src_string, 0);
-			c_src_or_file[i] = strcpy(new char[strlen(c_src) + 1], c_src);
-			env->ReleaseStringUTFChars(src_string, c_src);
+			action(i);
 		}
 	}
 	if (c_argc != 0)
@@ -125,19 +130,32 @@ Java_edu_guet_apicoc_Interpreter_createSub0(JNIEnv *env, jclass type, jobjectArr
 	{
 		if (c_length != 0)
 		{
-			for (int i = 0; i < c_length; i++)
+			function<void(int)> action1 = [&c_src_names](int index)->void
 			{
-				if (c_src_names != nullptr)
-				{
-					delete c_src_names[i];
-				}
-				delete c_src_or_file[i];
-			}
+				delete c_src_names[index];
+			};
+			function<void()> action2 = [&c_src_or_file]()->void
+			{ 
+				delete c_src_or_file;
+			};
 			if (c_src_names != nullptr)
 			{
-				delete c_src_names;
+				action1 = [action1, &c_src_or_file](int index)->void
+				{
+					delete c_src_or_file[index];
+					action1(index);
+				};
+				action2 = [action2, &c_src_names]()->void
+				{
+					delete c_src_names;
+					action2();
+				};
 			}
-			delete c_src_or_file;
+			for (int i = 0; i < c_length; i++)
+			{
+				action1(i);
+			}
+			action2();
 		}
 		if (c_argc != 0)
 		{
