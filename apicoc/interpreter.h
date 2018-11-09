@@ -475,7 +475,11 @@ struct Picoc_Struct {
 
 	/* memory pool */
 
-	pool_t pool;
+	pool_t Pool;
+
+	/* jni */
+
+	JavaVM*JVM;
 
 };
 
@@ -662,5 +666,11 @@ void StdboolSetupFunc(Picoc *pc);
 extern const char UnistdDefs[];
 extern struct LibraryFunction UnistdFunctions[];
 void UnistdSetupFunc(Picoc *pc);
+
+/* dlfcn.c */
+extern struct LibraryFunction DlfcnFuntioncs[];
+void DlfcnSetupFunc(Picoc *pc);
+
+
 
 #endif /* INTERPRETER_H */

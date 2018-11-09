@@ -3,8 +3,8 @@
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "apicoc", __VA_ARGS__))
 #ifndef BUILTIN_MINI_STDLIB
-
 #include <errno.h>
+#include <stdio.h>
 #include "../interpreter.h"
 
 #define MAX_FORMAT 80

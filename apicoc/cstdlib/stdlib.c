@@ -78,22 +78,22 @@ void StdlibStrtoul(struct ParseState *Parser, struct Value *ReturnValue, struct 
 
 void StdlibMalloc(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-	ReturnValue->Val->Pointer = pool_malloc(Parser->pc->pool,Param[0]->Val->Integer);
+	ReturnValue->Val->Pointer = pool_malloc(Parser->pc->Pool,Param[0]->Val->Integer);
 }
 
 void StdlibCalloc(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-	ReturnValue->Val->Pointer = pool_calloc(Parser->pc->pool, Param[0]->Val->Integer, Param[1]->Val->Integer);
+	ReturnValue->Val->Pointer = pool_calloc(Parser->pc->Pool, Param[0]->Val->Integer, Param[1]->Val->Integer);
 }
 
 void StdlibRealloc(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-	ReturnValue->Val->Pointer = pool_realloc(Parser->pc->pool, Param[0]->Val->Pointer, Param[1]->Val->Integer);
+	ReturnValue->Val->Pointer = pool_realloc(Parser->pc->Pool, Param[0]->Val->Pointer, Param[1]->Val->Integer);
 }
 
 void StdlibFree(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-	pool_free(Parser->pc->pool, Param[0]->Val->Pointer);
+	pool_free(Parser->pc->Pool, Param[0]->Val->Pointer);
 }
 
 void StdlibRand(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)

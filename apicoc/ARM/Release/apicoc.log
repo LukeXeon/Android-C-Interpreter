@@ -3,10 +3,4 @@
   JAVA_HOME=D:\javaSdkPath
   NDK_ROOT=C:\ProgramData\Microsoft\AndroidNDK64\android-ndk-r13b
   apicoc.cpp
-  stdio.c
-  In file included from cstdlib\../interpreter.h:9:0,
-                   from cstdlib\stdio.c:8:
-cstdlib\../pool.h(16,2): warning : parameter names (without types) in function declaration
-    extern pool_t pool_create(pool_type);
-    ^
   apicoc.vcxproj -> C:\Users\Mr.小世界\Documents\Visual Studio 2017\Projects\apicoc\ARM\Release\libapicoc.so

@@ -28,6 +28,7 @@
     <ClCompile Include="cstdlib\time.c" />
     <ClCompile Include="cstdlib\unistd.c" />
     <ClCompile Include="pool.cpp" />
+    <ClCompile Include="libs\dlfcn.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="apicoc.h" />
@@ -37,5 +38,6 @@
     <ClInclude Include="linenoise-ng\ConvertUTF.h" />
     <ClInclude Include="linenoise-ng\linenoise.h" />
     <ClInclude Include="pool.h" />
+    <ClInclude Include="pch.h" />
   </ItemGroup>
 </Project>

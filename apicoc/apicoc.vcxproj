@@ -182,6 +182,7 @@
     <ClCompile Include="heap.c" />
     <ClCompile Include="include.c" />
     <ClCompile Include="lex.c" />
+    <ClCompile Include="libs\dlfcn.c" />
     <ClCompile Include="linenoise-ng\ConvertUTF.cpp" />
     <ClCompile Include="linenoise-ng\linenoise.cpp" />
     <ClCompile Include="linenoise-ng\wcwidth.cpp" />
@@ -197,6 +198,7 @@
   <ItemGroup>
     <ClInclude Include="apicoc.h" />
     <ClInclude Include="interpreter.h" />
+    <ClInclude Include="pch.h" />
     <ClInclude Include="linenoise-ng\ConvertUTF.h" />
     <ClInclude Include="linenoise-ng\linenoise.h" />
     <ClInclude Include="pool.h" />

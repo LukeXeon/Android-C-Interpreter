@@ -6,7 +6,6 @@ using namespace std;
 static struct {
 	JavaVM*javaVM;
 	jfieldID descriptorField;
-	jclass accessExClass;
 } caches;
 
 static void SetFd(JNIEnv *env, jobject fileDescriptor, int value) {
@@ -67,8 +66,6 @@ JNI_OnLoad(JavaVM* vm, void *reserved)
 	vm->GetEnv((void**)(&env), JNI_VERSION_1_6);
 	caches.descriptorField =
 		env->GetFieldID(env->FindClass("java/io/FileDescriptor"), "descriptor", "I");
-	caches.accessExClass =
-		(jclass)env->NewGlobalRef(env->FindClass("java/lang/IllegalAccessException"));
 	return JNI_VERSION_1_6;
 }
 
@@ -196,7 +193,8 @@ Java_edu_guet_apicoc_Interpreter_createSub0(JNIEnv *env, jclass type, jobjectArr
 				}
 			}
 		}
-		picoc->pool = pool_create(normal_t);
+		picoc->Pool = pool_create(normal_t);
+		picoc->JVM = nullptr;
 		if (PicocPlatformSetExitPoint(picoc))
 		{
 			PicocCleanup(picoc);
@@ -239,6 +237,7 @@ Java_edu_guet_apicoc_Interpreter_init0(JNIEnv *env, jclass type, jobject stdinFd
 	MapingIOToPipes(env, c_fd, j_fd);
 	OpenStream(c_fd, c_streams);
 	InitIO(picoc, c_streams);
+	picoc->JVM = caches.javaVM;
 	return ToLong(picoc);
 }
 
@@ -295,9 +294,10 @@ Java_edu_guet_apicoc_Interpreter_callMain0(JNIEnv *env, jclass type, jlong ptr, 
 		cargs[i] = strcpy(new char[strlen(source) + 1], source);
 		env->ReleaseStringUTFChars(jstr, source);
 	}
-	picoc->pool = pool_create(manager_t);
+	picoc->Pool = pool_create(manager_t);
 	if (PicocPlatformSetExitPoint(picoc))
 	{
+		pool_destroy(picoc->Pool);
 		PicocCleanup(picoc);
 		return picoc->PicocExitValue;
 	}
@@ -308,7 +308,7 @@ Java_edu_guet_apicoc_Interpreter_callMain0(JNIEnv *env, jclass type, jlong ptr, 
 	for (jsize i = 0; i < size; i++) {
 		delete cargs[i];
 	}
-	pool_destroy(picoc->pool);
+	pool_destroy(picoc->Pool);
 	delete cargs;
 	return picoc->PicocExitValue;
 }
