@@ -3,4 +3,28 @@
   JAVA_HOME=D:\javaSdkPath
   NDK_ROOT=C:\ProgramData\Microsoft\AndroidNDK64\android-ndk-r13b
   apicoc.cpp
+  clibrary.c
+  ctype.c
+  errno.c
+  math.c
+  stdbool.c
+  stdio.c
+  stdlib.c
+  string.c
+  time.c
+  unistd.c
+  debug.c
+  expression.c
+  heap.c
+  include.c
+  lex.c
+  dlfcn.c
+  pool.cpp
+  parse.c
+  platform.c
+  library_unix.c
+  platform_unix.c
+  table.c
+  type.c
+  variable.c
   apicoc.vcxproj -> C:\Users\Mr.小世界\Documents\Visual Studio 2017\Projects\apicoc\ARM\Release\libapicoc.so

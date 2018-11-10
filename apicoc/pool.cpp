@@ -8,6 +8,7 @@ struct _pool_t
 	virtual void * _calloc(size_t s1, size_t s2) = 0;
 	virtual void * _realloc(void *block, size_t s) = 0;
 	virtual void _free(void *block) = 0;
+	virtual void _release() = 0;
 	virtual ~_pool_t(){}
 };
 
@@ -29,6 +30,12 @@ struct _normal_t :public _pool_t
 	{
 		free(block);
 	}
+
+	virtual void _release()override
+	{
+
+	}
+
 	virtual ~_normal_t()override
 	{
 	}
@@ -83,7 +90,7 @@ struct _manager_t :public _pool_t
 		free(block);
 	}
 
-	virtual ~_manager_t()override
+	virtual void _release()override
 	{
 		this->_mutex.lock();
 		for (auto it = this->_set.begin(); it != this->_set.end(); it++)
@@ -91,6 +98,11 @@ struct _manager_t :public _pool_t
 			free(*it);
 		}
 		this->_mutex.unlock();
+	}
+
+	virtual ~_manager_t()override
+	{
+		_release();
 	}
 };
 
@@ -126,6 +138,11 @@ extern "C"
 			return new _manager_t();
 		}
 		return nullptr;
+	}
+
+	void pool_release(pool_t m)
+	{
+		m->_release();
 	}
 
 	void pool_destroy(pool_t m)
