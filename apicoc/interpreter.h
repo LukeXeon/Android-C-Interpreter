@@ -480,8 +480,7 @@ struct Picoc_Struct {
 	/* jni */
 
 	JavaVM*JVM;
-
-	jlong table;
+	jobject Wrapper;
 
 };
 

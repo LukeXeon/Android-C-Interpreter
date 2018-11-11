@@ -189,14 +189,15 @@
     <ClCompile Include="pool.cpp" />
     <ClCompile Include="parse.c" />
     <ClCompile Include="platform.c" />
-    <ClCompile Include="platform\library_unix.c" />
-    <ClCompile Include="platform\platform_unix.c" />
+    <ClCompile Include="platform\library_android.cpp" />
+    <ClCompile Include="platform\platform_android.c" />
     <ClCompile Include="table.c" />
     <ClCompile Include="type.c" />
     <ClCompile Include="variable.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="apicoc.h" />
+    <ClInclude Include="cstdlib\stdio0.h" />
     <ClInclude Include="interpreter.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="linenoise-ng\ConvertUTF.h" />

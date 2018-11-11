@@ -3,10 +3,11 @@
 using namespace std;
 #define PICOC_STACK_SIZE (128*1024)              /* space for the the stack */
 
-static struct {
+struct {
 	JavaVM*javaVM;
 	jfieldID descriptorField;
 	jclass runtimeExClass;
+	jmethodID handlerMethod;
 } caches;
 
 static void SetFd(JNIEnv *env, jobject fileDescriptor, int value) {
@@ -70,7 +71,7 @@ JNI_OnLoad(JavaVM* vm, void *reserved)
 	vm->GetEnv((void**)(&env), JNI_VERSION_1_6);
 	caches.descriptorField =
 		env->GetFieldID(env->FindClass("java/io/FileDescriptor"), "descriptor", "I");
-	caches.runtimeExClass = 
+	caches.runtimeExClass =
 		(jclass)env->NewGlobalRef(env->FindClass("java/lang/RuntimeException"));
 	return JNI_VERSION_1_6;
 }

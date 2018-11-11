@@ -1,4 +1,5 @@
 #pragma once
+#include <jni.h>
 #include <android/log.h>
 #ifdef __cplusplus
 #define BINGE_EXTERN_C extern "C"{

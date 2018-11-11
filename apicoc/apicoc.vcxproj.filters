@@ -13,8 +13,6 @@
     <ClCompile Include="table.c" />
     <ClCompile Include="type.c" />
     <ClCompile Include="variable.c" />
-    <ClCompile Include="platform\library_unix.c" />
-    <ClCompile Include="platform\platform_unix.c" />
     <ClCompile Include="linenoise-ng\ConvertUTF.cpp" />
     <ClCompile Include="linenoise-ng\linenoise.cpp" />
     <ClCompile Include="linenoise-ng\wcwidth.cpp" />
@@ -29,6 +27,8 @@
     <ClCompile Include="cstdlib\unistd.c" />
     <ClCompile Include="pool.cpp" />
     <ClCompile Include="libs\dlfcn.c" />
+    <ClCompile Include="platform\library_android.cpp" />
+    <ClCompile Include="platform\platform_android.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="apicoc.h" />
@@ -39,5 +39,6 @@
     <ClInclude Include="linenoise-ng\linenoise.h" />
     <ClInclude Include="pool.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="cstdlib\stdio0.h" />
   </ItemGroup>
 </Project>

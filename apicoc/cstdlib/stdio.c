@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "../interpreter.h"
+#include "stdio0.h"
 
 #define MAX_FORMAT 80
 #define MAX_SCANF_ARGS 10
@@ -34,12 +35,6 @@ typedef struct StdOutStreamStruct
     
 } StdOutStream;
 
-/* our representation of varargs within picoc */
-struct StdVararg
-{
-    struct Value **Param;
-    int NumArgs;
-};
 
 /* initialises the I/O system so error reporting works */
 void BasicIOInit(Picoc *pc)
