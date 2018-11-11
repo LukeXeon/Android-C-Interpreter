@@ -13,19 +13,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import edu.guet.apicoc.functions.Function3;
 
 
 /**
@@ -36,6 +38,23 @@ import edu.guet.apicoc.functions.Function3;
 public final class ScriptRuntime implements AutoCloseable,ScriptingIO
 {
     private final static String TAG = "ScriptRuntime";
+    private final static Map<Class<?>, String> SCRIPTING_BASIC_TYPES
+            = Collections.unmodifiableMap(new HashMap<Class<?>, String>()
+    {
+        {
+            put(Boolean.class, "bool");
+            put(Integer.class, "int");
+            put(Double.class, "double");
+            put(Long.class, "long");
+            put(Float.class, "float");
+            put(String.class, "char *");
+            put(Character.class, "char");
+            put(Short.class, "short");
+            put(Void.class, "void");
+        }
+    });
+
+    private Map<String, Object> handlers = new HashMap<>();
     private PipedInputStream stderr;
     private PipedInputStream stdout;
     private PipedOutputStream stdin;
@@ -122,23 +141,18 @@ public final class ScriptRuntime implements AutoCloseable,ScriptingIO
     }
 
     @WorkerThread
-    public void doSomething(final String source)
+    public int doSomething(final String source)
     {
-        AccessController.doPrivileged(new PrivilegedAction<Void>()
+        return AccessController.doPrivileged(new PrivilegedAction<Integer>()
         {
             @Override
-            public Void run()
+            public Integer run()
             {
-                doSomething0(handler, source);
-                return null;
+                return doSomething0(handler, source);
             }
         });
     }
 
-    public void register(Function3 function)
-    {
-        register0(handler, function);
-    }
 
     @Override
     public synchronized void close() throws IOException
@@ -150,9 +164,9 @@ public final class ScriptRuntime implements AutoCloseable,ScriptingIO
                 @Override
                 public Void run() throws IOException
                 {
-                    stdin.close();
-                    stdout.close();
-                    stderr.close();
+                    stdin.processExited();
+                    stdout.processExited();
+                    stderr.processExited();
                     close0(handler);
                     handler = 0;
                     return null;
@@ -463,8 +477,5 @@ public final class ScriptRuntime implements AutoCloseable,ScriptingIO
 
     private static native void close0(long handler);
 
-    private static native void doSomething0(long handler, String source);
-
-    private static native void register0(long handler, Object function);
-
+    private static native int doSomething0(long handler, String source);
 }

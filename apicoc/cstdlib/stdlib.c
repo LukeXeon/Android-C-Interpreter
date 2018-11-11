@@ -1,44 +1,52 @@
 /* stdlib.h library for large systems - small embedded systems use clibrary.c instead */
 #include "../interpreter.h"
-
+#include <errno.h>
 
 #ifndef BUILTIN_MINI_STDLIB
 
 static int Stdlib_ZeroValue = 0;
 
-char *itoa(int num,char*str,int radix) {
-	/*索引表*/
-    char index[] = "0123456789ABCDEF";
-    unsigned unum;/*中间变量*/
-    int i = 0, j, k;
-	/*确定unum的值*/
-    if (radix == 10 && num < 0)/*十进制负数*/
-    {
-        unum = (unsigned) -num;
-        str[i++] = '-';
-    }
-    else unum = (unsigned) num;/*其他情况*/
-	/*转换*/
-    do {
-        str[i++] = index[unum % (unsigned) radix];
-        unum /= radix;
-    } while (unum);
-    str[i] = '\0';
-	/*逆序*/
-    if (str[0] == '-')k = 1;/*+进制-数*/
-    else k = 0;
-    char temp;
-    for (j = k; j <= (i - 1) / 2; j++) {
-        temp = str[j];
-        str[j] = str[i - 1 + k - j];
-        str[i - 1 + k - j] = temp;
-    }
-    return str;
+char* _itoa(int value, char* string, int radix)
+{
+	char tmp[33];
+	char* tp = tmp;
+	int i;
+	unsigned v;
+	int sign;
+	char* sp;
+	if (radix > 36 || radix <= 1)
+	{
+		errno = EDOM;
+		return 0;
+	}
+	sign = (radix == 10 && value < 0);
+	if (sign)
+		v = -value;
+	else
+		v = (unsigned)value;
+	while (v || tp == tmp)
+	{
+		i = v % radix;
+		v = v / radix;
+		if (i < 10)
+			*tp++ = i + '0';
+		else
+			*tp++ = i + 'a' - 10;
+	}
+	if (string == 0)
+		string = (char*)malloc((tp - tmp) + sign + 1);
+	sp = string;
+	if (sign)
+		*sp++ = '-';
+	while (tp > tmp)
+		*sp++ = *--tp;
+	*sp = 0;
+	return string;
 }
 
 
 void StdlibItoa(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
-    ReturnValue->Val->Pointer = itoa(Param[0]->Val->Integer, Param[1]->Val->Pointer,
+    ReturnValue->Val->Pointer = _itoa(Param[0]->Val->Integer, Param[1]->Val->Pointer,
                                      Param[2]->Val->Integer);
 }
 

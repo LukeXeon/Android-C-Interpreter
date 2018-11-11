@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <functional>
+#include <unordered_map>
 BINGE_EXTERN_C
 #include "picoc.h"
 END_EXTERN_C

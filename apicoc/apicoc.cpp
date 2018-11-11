@@ -6,17 +6,18 @@ using namespace std;
 static struct {
 	JavaVM*javaVM;
 	jfieldID descriptorField;
+	jclass runtimeExClass;
 } caches;
 
 static void SetFd(JNIEnv *env, jobject fileDescriptor, int value) {
 	env->SetIntField(fileDescriptor, caches.descriptorField, value);
 }
 
-static Picoc*ToPtr(jlong ptr) {
+static Picoc*ToHandler(jlong ptr) {
 	return (Picoc *)ptr;
 }
 
-static jlong ToLong(Picoc*ptr) {
+static jlong ToJLong(void*ptr) {
 	return (jlong)ptr;
 }
 
@@ -28,9 +29,12 @@ static void MapingIOToPipes(JNIEnv*env, int c_io[3], jobject j_fd[3])
 	pipe(stdin_pipe);
 	pipe(stdout_pipe);
 	pipe(stderr_pipe);
-	SetFd(env, j_fd[0], stdin_pipe[1]);
-	SetFd(env, j_fd[1], stdout_pipe[0]);
-	SetFd(env, j_fd[2], stderr_pipe[0]);
+	c_io[0] = stdin_pipe[0];//r
+	c_io[1] = stdout_pipe[1];//w
+	c_io[2] = stderr_pipe[1];//w
+	SetFd(env, j_fd[0], stdin_pipe[1]);//w
+	SetFd(env, j_fd[1], stdout_pipe[0]);//r
+	SetFd(env, j_fd[2], stderr_pipe[0]);//r
 }
 
 static void OpenStream(int c_io[3], FILE* streams[3])
@@ -66,6 +70,8 @@ JNI_OnLoad(JavaVM* vm, void *reserved)
 	vm->GetEnv((void**)(&env), JNI_VERSION_1_6);
 	caches.descriptorField =
 		env->GetFieldID(env->FindClass("java/io/FileDescriptor"), "descriptor", "I");
+	caches.runtimeExClass = 
+		(jclass)env->NewGlobalRef(env->FindClass("java/lang/RuntimeException"));
 	return JNI_VERSION_1_6;
 }
 
@@ -239,23 +245,38 @@ Java_edu_guet_apicoc_ScriptRuntime_init0(JNIEnv *env, jclass type, jobject stdin
 	InitIO(picoc, c_streams);
 	picoc->JVM = caches.javaVM;
 	picoc->Pool = pool_create(manager_t);
-	return ToLong(picoc);
+	return ToJLong(picoc);
 }
 
 
 EXTERN_C
-JNIEXPORT void JNICALL
+JNIEXPORT jint JNICALL
 Java_edu_guet_apicoc_ScriptRuntime_doSomething0(JNIEnv *env, jclass type, jlong handler, jstring source)
 {
 	LOGI("picoc do something");
-	Picoc *pc = ToPtr(handler);
+	struct ParseState Parser;
+	enum ParseResult Ok;
+	Picoc *pc = ToHandler(handler);
+	char *RegFileName = TableStrRegister(pc, "scripting");
 	const char* j_src = env->GetStringUTFChars(source, 0);
-	int c_src_length = strlen(j_src) + 1;
-	char * c_src = strcpy(new char[c_src_length], j_src);
-	PicocParse(pc, "scripting", c_src, c_src_length, true, true, true, true);
-	delete c_src;
+	int j_src_length = strlen(j_src) + 1;
+	void *Tokens = LexAnalyse(pc, RegFileName, j_src, j_src_length, NULL);
+	if (PicocPlatformSetExitPoint(pc))
+	{
+		goto ThrowNew;
+	}
+	LexInitParser(&Parser, pc, j_src, Tokens, RegFileName, true, true);
+	do {
+		Ok = ParseStatement(&Parser, TRUE);
+	} while (Ok == ParseResultOk);
+	HeapFreeMem(pc, Tokens);
 	env->ReleaseStringUTFChars(source, j_src);
-	pool_release(pc->Pool);
+	if (Ok == ParseResultError)
+	{
+	ThrowNew:
+		env->ThrowNew(caches.runtimeExClass, "error");
+	}
+	return Ok;
 }
 
 EXTERN_C
@@ -265,7 +286,7 @@ Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr) {
 		return;
 	}
 	LOGI("picoc close");
-	Picoc *pc = ToPtr(ptr);
+	Picoc *pc = ToHandler(ptr);
 	close(fileno(pc->CStdIn));
 	close(fileno(pc->CStdOut));
 	close(fileno(pc->CStdErr));

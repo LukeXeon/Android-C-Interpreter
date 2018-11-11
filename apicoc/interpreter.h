@@ -481,6 +481,8 @@ struct Picoc_Struct {
 
 	JavaVM*JVM;
 
+	jlong table;
+
 };
 
 /* table.c */

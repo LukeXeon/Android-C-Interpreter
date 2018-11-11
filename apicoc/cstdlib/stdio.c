@@ -1,5 +1,5 @@
 /* stdio.h library for large systems - small embedded systems use clibrary.c instead */
-#include <android/log.h>
+#include "../pch.h"
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "apicoc", __VA_ARGS__))
 #ifndef BUILTIN_MINI_STDLIB
@@ -513,7 +513,7 @@ void StdioGetchar(struct ParseState *Parser, struct Value *ReturnValue, struct V
 }
 
 void StdioPrintf(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) {
-    struct StdVararg PrintfArgs;
+	struct StdVararg PrintfArgs;
 
     PrintfArgs.Param = Param;
     PrintfArgs.NumArgs = NumArgs - 1;

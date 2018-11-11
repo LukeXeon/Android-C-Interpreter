@@ -4,10 +4,14 @@ void UnixSetupFunc()
 {    
 }
 
-void Ctest (struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
+void CLogw(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    printf("test(%d)\n", Param[0]->Val->Integer);
-    Param[0]->Val->Integer = 1234;
+	LOGW(Param[0]->Val->Pointer);
+}
+
+void CLogi(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+{
+	LOGI(Param[0]->Val->Pointer);
 }
 
 void Clineno (struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs) 
@@ -18,8 +22,9 @@ void Clineno (struct ParseState *Parser, struct Value *ReturnValue, struct Value
 /* list of all library functions and their prototypes */
 struct LibraryFunction UnixFunctions[] =
 {
-    { Ctest,        "void test(int);" },
     { Clineno,      "int lineno();" },
+	{ CLogw,        "void logw(char *);" },
+	{ CLogi,        "void logi(char *);" },
     { NULL,         NULL }
 };
 
