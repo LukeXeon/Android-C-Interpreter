@@ -479,7 +479,6 @@ struct Picoc_Struct {
 
 	/* jni */
 
-	JavaVM*JVM;
 	jobject Wrapper;
 
 };

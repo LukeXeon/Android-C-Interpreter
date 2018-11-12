@@ -14,7 +14,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Modifier;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
@@ -25,9 +25,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
+import java.util.regex.Pattern;
 
 
 /**
@@ -35,26 +36,35 @@ import java.util.concurrent.Executors;
  */
 
 @SuppressWarnings("JniMissingFunction")
-public final class ScriptRuntime implements AutoCloseable,ScriptingIO
+public final class ScriptRuntime
+        implements AutoCloseable,
+        ScriptingIO
 {
     private final static String TAG = "ScriptRuntime";
-    private final static Map<Class<?>, String> SCRIPTING_BASIC_TYPES
-            = Collections.unmodifiableMap(new HashMap<Class<?>, String>()
+    private final static Map<Class<?>, String> SCRIPT_BASIC_TYPE
+            = new HashMap<Class<?>, String>()
     {
         {
-            put(Boolean.class, "bool");
-            put(Integer.class, "int");
-            put(Double.class, "double");
-            put(Long.class, "long");
-            put(Float.class, "float");
             put(String.class, "char *");
-            put(Character.class, "char");
-            put(Short.class, "short");
             put(Void.class, "void");
+            put(void.class, "void");
+            put(Integer.class, "int");
+            put(int.class, "int");
+            put(Long.class, "long");
+            put(long.class, "long");
+            put(Double.class, "double");
+            put(double.class, "double");
+            put(Float.class, "float");
+            put(float.class, "float");
+            put(Character.class, "char");
+            put(char.class, "char");
+            put(Short.class, "short");
+            put(short.class, "short");
         }
-    });
+    };
 
-    private Map<String, Object> handlers = new HashMap<>();
+    private Map<String, MethodHandler> handlers = new HashMap<>();
+
     private PipedInputStream stderr;
     private PipedInputStream stdout;
     private PipedOutputStream stdin;
@@ -141,18 +151,41 @@ public final class ScriptRuntime implements AutoCloseable,ScriptingIO
     }
 
     @WorkerThread
-    public int doSomething(final String source)
+    public synchronized boolean doSomething(final String source)
     {
-        return AccessController.doPrivileged(new PrivilegedAction<Integer>()
+        return AccessController.doPrivileged(new PrivilegedAction<Boolean>()
         {
             @Override
-            public Integer run()
+            public Boolean run()
             {
                 return doSomething0(handler, source);
             }
         });
     }
 
+    public synchronized void registerHandler(Object target)
+    {
+        for (Map.Entry<String, MethodHandler> entry
+                : formTarget0(target).entrySet())
+        {
+            handlers.put(entry.getKey(), entry.getValue());
+            registerHandler0(handler, UUID.randomUUID().toString(),
+                    tokenAnalysis0(entry.getKey(),
+                            entry.getValue().method));
+        }
+    }
+
+    private Object onInvoke(String name, Object[] args)
+    {
+        try
+        {
+            MethodHandler methodHandler = handlers.get(name);
+            return methodHandler.method.invoke(methodHandler.target, args);
+        } catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Override
     public synchronized void close() throws IOException
@@ -179,10 +212,22 @@ public final class ScriptRuntime implements AutoCloseable,ScriptingIO
     }
 
     @Override
-    protected synchronized void finalize() throws Throwable
+    protected void finalize() throws Throwable
     {
         super.finalize();
         close();
+    }
+
+    private static final class MethodHandler
+    {
+        private final Method method;
+        private final Object target;
+
+        private MethodHandler(Object target, Method method)
+        {
+            this.target = target;
+            this.method = method;
+        }
     }
 
     private static final class ScriptingProcess extends ScriptingIOProcess
@@ -460,6 +505,131 @@ public final class ScriptRuntime implements AutoCloseable,ScriptingIO
         }
     }
 
+    private Map<String, MethodHandler> formTarget0(Object target)
+    {
+        Pattern pattern = Pattern.compile("[_a-zA-z][_a-zA-z0-9]*");
+        Method[] methods = target.getClass().getMethods();
+        Map<String, MethodHandler> result = new HashMap<>();
+        if (methods != null && methods.length != 0)
+        {
+            for (Method method : methods)
+            {
+                HandlerTarget handlerTarget
+                        = method.getAnnotation(HandlerTarget.class);
+                if (Modifier.isPublic(method.getModifiers())
+                        && !Modifier.isStatic(method.getModifiers())
+                        && handlerTarget != null)
+                {
+                    String name = handlerTarget.name();
+                    if (!pattern.matcher(Objects
+                            .requireNonNull(name)).matches()
+                            && !handlers.containsKey(name))
+                    {
+                        throw new IllegalArgumentException("this name is illegal '" + name + "'");
+                    }
+                    if (!SCRIPT_BASIC_TYPE.containsKey(method.getReturnType()))
+                    {
+                        throw new IllegalArgumentException(method.getReturnType().getName());
+                    }
+                    for (Class<?> pramType : method.getParameterTypes())
+                    {
+                        if (void.class.equals(pramType)
+                                || Void.class.equals(pramType)
+                                || !SCRIPT_BASIC_TYPE.containsKey(pramType))
+                        {
+                            throw new IllegalArgumentException(pramType.getName());
+                        }
+                    }
+                    result.put(name, new MethodHandler(target, method));
+                }
+            }
+        }
+        return result;
+    }
+
+    private static String tokenAnalysis0(String name, Method method)
+    {
+        StringBuilder builder = new StringBuilder();
+        Class<?> returnType = method.getReturnType();
+        builder.append(SCRIPT_BASIC_TYPE
+                .get(returnType))
+                .append(' ')
+                .append(name)
+                .append('(');
+        Class<?>[] pramType = method.getParameterTypes();
+        if (pramType != null && pramType.length != 0)
+        {
+            for (int index = 0; index < pramType.length; index++)
+            {
+                builder.append(SCRIPT_BASIC_TYPE
+                        .get(pramType[index]))
+                        .append(' ')
+                        .append('_')
+                        .append(index);
+                if (index != pramType.length - 1)
+                {
+                    builder.append(',');
+                }
+            }
+        }
+        builder.append(')').append('{');
+        if (returnType.equals(void.class) || returnType.equals(Void.class))
+        {
+            builder.append("__handler(")
+                    .append('\"')
+                    .append(name)
+                    .append('\"')
+                    .append(',')
+                    .append("NULL")
+                    .append(',');
+        } else
+        {
+            builder.append(SCRIPT_BASIC_TYPE.get(returnType))
+                    .append(' ')
+                    .append('_')
+                    .append('r')
+                    .append(';')
+                    .append("__handler(")
+                    .append('\"')
+                    .append(name)
+                    .append('\"')
+                    .append(',')
+                    .append('&')
+                    .append('_')
+                    .append('r')
+                    .append(',');
+        }
+        if (pramType != null && pramType.length != 0)
+        {
+            for (int index = 0; index < pramType.length; index++)
+            {
+                builder.append('_')
+                        .append(index);
+                if (index != pramType.length - 1)
+                {
+                    builder.append(',');
+                }
+            }
+        }
+        if (returnType.equals(void.class) || returnType.equals(Void.class))
+        {
+            builder.append(')')
+                    .append(';')
+                    .append('}');
+        } else
+        {
+            builder.append(')')
+                    .append(';')
+                    .append("return")
+                    .append(' ')
+                    .append('_')
+                    .append('r')
+                    .append(';')
+                    .append('}');
+        }
+        return builder.toString();
+    }
+
     private static native int createSub0(String[] srcNames,
                                          String[] srcOrFile,
                                          String[] args,
@@ -471,11 +641,13 @@ public final class ScriptRuntime implements AutoCloseable,ScriptingIO
 
     private static native void killSub0(int pid);
 
-    private static native long init0(FileDescriptor stdinFd,
-                                     FileDescriptor stdoutFd,
-                                     FileDescriptor stderrFd);
+    private native long init0(FileDescriptor stdinFd,
+                              FileDescriptor stdoutFd,
+                              FileDescriptor stderrFd);
 
     private static native void close0(long handler);
 
-    private static native int doSomething0(long handler, String source);
+    private static native boolean doSomething0(long handler, String source);
+
+    private static native void registerHandler0(long handler, String id, String registerText);
 }

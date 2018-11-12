@@ -133,8 +133,8 @@ void PrintSourceTextErrorLine(IOFILE *Stream, const char *FileName, const char *
 /* exit with a message */
 void ProgramFail(struct ParseState *Parser, const char *Message, ...)
 {
-    va_list Args;
 
+    va_list Args;
     PrintSourceTextErrorLine(Parser->pc->CStdOut, Parser->FileName, Parser->SourceText, Parser->Line, Parser->CharacterPos);
     va_start(Args, Message);
     PlatformVPrintf(Parser->pc->CStdOut, Message, Args);

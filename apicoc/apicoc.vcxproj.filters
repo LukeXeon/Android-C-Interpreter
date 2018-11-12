@@ -39,6 +39,6 @@
     <ClInclude Include="linenoise-ng\linenoise.h" />
     <ClInclude Include="pool.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="cstdlib\stdio0.h" />
+    <ClInclude Include="io.h" />
   </ItemGroup>
 </Project>

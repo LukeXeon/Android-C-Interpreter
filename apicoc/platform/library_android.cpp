@@ -5,22 +5,16 @@ extern "C"
 {
 #include "../interpreter.h"
 #include "../pch.h"
-#include "../cstdlib/stdio0.h"
+#include "../io.h"
 
 	void RuntimeSetupFunc(Picoc*pc)
 	{
 
 	}
 
-	void Runtime__Handler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
-	{
-		JNIEnv *env = nullptr;
-		Parser->pc->JVM->GetEnv((void**)&env, JNI_VERSION_1_6);
-		if (env == nullptr)
-		{
-			return;
-		}
-	}
+
+	void Runtime__Handler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+
 
 	void Runtime__LogW(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
@@ -59,7 +53,7 @@ extern "C"
 		{ Runtime__Lineno,    "int __lineno();" },
 		{ Runtime__LogW,      "int __logw(char *, ...);" },
 		{ Runtime__LogI,      "int __logi(char *, ...);" },
-		{ Runtime__Handler,    "int __handler(char *,void *, ...);" },
+		{ Runtime__Handler,   "int __handler(char *,void *, ...);" },
 		{ NULL,         NULL }
 	};
 

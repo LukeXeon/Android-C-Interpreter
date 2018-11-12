@@ -7,7 +7,7 @@ struct {
 	JavaVM*javaVM;
 	jfieldID descriptorField;
 	jclass runtimeExClass;
-	jmethodID handlerMethod;
+	jmethodID handlerInvokeMethod;
 } caches;
 
 static void SetFd(JNIEnv *env, jobject fileDescriptor, int value) {
@@ -71,8 +71,10 @@ JNI_OnLoad(JavaVM* vm, void *reserved)
 	vm->GetEnv((void**)(&env), JNI_VERSION_1_6);
 	caches.descriptorField =
 		env->GetFieldID(env->FindClass("java/io/FileDescriptor"), "descriptor", "I");
-	caches.runtimeExClass =
-		(jclass)env->NewGlobalRef(env->FindClass("java/lang/RuntimeException"));
+/*
+	caches.handlerInvokeMethod
+		= env->GetMethodID(env->FindClass("edu/guet/apicoc/ScriptRuntime"), "onInvoke",
+			"(Ljava/lang/String,[Ljava/lang/Object)Ljava/lang/Object");*/
 	return JNI_VERSION_1_6;
 }
 
@@ -201,7 +203,7 @@ Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jobjectA
 			}
 		}
 		picoc->Pool = pool_create(normal_t);
-		picoc->JVM = nullptr;
+		picoc->Wrapper = nullptr;
 		if (PicocPlatformSetExitPoint(picoc))
 		{
 			PicocCleanup(picoc);
@@ -232,7 +234,7 @@ Java_edu_guet_apicoc_ScriptRuntime_killSub0(JNIEnv *env, jclass type, jint pid) 
 
 EXTERN_C
 JNIEXPORT jlong JNICALL
-Java_edu_guet_apicoc_ScriptRuntime_init0(JNIEnv *env, jclass type, jobject stdinFd, jobject stdoutFd,
+Java_edu_guet_apicoc_ScriptRuntime_init0(JNIEnv *env, jobject obj, jobject stdinFd, jobject stdoutFd,
 	jobject stderrFd) {
 	LOGI("picoc init");
 	int c_fd[3] = { 0 };
@@ -244,14 +246,13 @@ Java_edu_guet_apicoc_ScriptRuntime_init0(JNIEnv *env, jclass type, jobject stdin
 	MapingIOToPipes(env, c_fd, j_fd);
 	OpenStream(c_fd, c_streams);
 	InitIO(picoc, c_streams);
-	picoc->JVM = caches.javaVM;
+	picoc->Wrapper = env->NewWeakGlobalRef(obj);
 	picoc->Pool = pool_create(manager_t);
 	return ToJLong(picoc);
 }
 
-
 EXTERN_C
-JNIEXPORT jint JNICALL
+JNIEXPORT jboolean JNICALL
 Java_edu_guet_apicoc_ScriptRuntime_doSomething0(JNIEnv *env, jclass type, jlong handler, jstring source)
 {
 	LOGI("picoc do something");
@@ -264,7 +265,9 @@ Java_edu_guet_apicoc_ScriptRuntime_doSomething0(JNIEnv *env, jclass type, jlong 
 	void *Tokens = LexAnalyse(pc, RegFileName, j_src, j_src_length, NULL);
 	if (PicocPlatformSetExitPoint(pc))
 	{
-		goto ThrowNew;
+		HeapFreeMem(pc, Tokens);
+		env->ReleaseStringUTFChars(source, j_src);
+		return JNI_FALSE;
 	}
 	LexInitParser(&Parser, pc, j_src, Tokens, RegFileName, true, true);
 	do {
@@ -272,18 +275,15 @@ Java_edu_guet_apicoc_ScriptRuntime_doSomething0(JNIEnv *env, jclass type, jlong 
 	} while (Ok == ParseResultOk);
 	HeapFreeMem(pc, Tokens);
 	env->ReleaseStringUTFChars(source, j_src);
-	if (Ok == ParseResultError)
-	{
-	ThrowNew:
-		env->ThrowNew(caches.runtimeExClass, "error");
-	}
-	return Ok;
+	return Ok != ParseResultError;
 }
 
 EXTERN_C
 JNIEXPORT void JNICALL
-Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr) {
-	if (ptr == 0) {
+Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr) 
+{
+	if (ptr == 0) 
+	{
 		return;
 	}
 	LOGI("picoc close");
@@ -294,4 +294,37 @@ Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr) {
 	PicocCleanup(pc);
 	pool_destroy(pc->Pool);
 	delete pc;
+}
+
+EXTERN_C
+JNIEXPORT void JNICALL
+Java_edu_guet_apicoc_ScriptRuntime_registerHandler0(JNIEnv *env, jclass type, jlong ptr, jstring id_, jstring text_)
+{
+	LOGI("picoc add handler");
+	Picoc *pc = ToHandler(ptr);
+	const char* text = env->GetStringUTFChars(text_, 0);
+	const char* id = env->GetStringUTFChars(id_, 0);
+	PicocParse(pc, id, text, strlen(text) + 1, true, false, false, true);
+	env->ReleaseStringUTFChars(text_, text);
+	env->ReleaseStringUTFChars(id_, id);
+}
+
+EXTERN_C
+JNIEXPORT void JNICALL 
+Runtime__Handler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+{
+	LOGI("测试");
+	JNIEnv * env;
+	jobject Wrapper = Parser->pc->Wrapper;
+	if (Wrapper != nullptr)
+	{
+		caches.javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+		if (env != nullptr && !env->IsSameObject(Wrapper, NULL))
+		{
+
+
+
+
+		}
+	}
 }

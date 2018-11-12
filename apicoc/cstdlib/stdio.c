@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "../interpreter.h"
-#include "stdio0.h"
+#include "../io.h"
 
 #define MAX_FORMAT 80
 #define MAX_SCANF_ARGS 10
