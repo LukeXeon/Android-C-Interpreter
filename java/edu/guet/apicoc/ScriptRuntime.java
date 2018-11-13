@@ -41,29 +41,59 @@ public final class ScriptRuntime
         ScriptingIO
 {
     private final static String TAG = "ScriptRuntime";
-    private final static Map<Class<?>, String> SCRIPT_BASIC_TYPE
+
+    private final static Map<Class<?>, String> SCRIPT_PARAMETER_TYPE
             = new HashMap<Class<?>, String>()
     {
         {
             put(String.class, "char *");
-            put(Void.class, "void");
-            put(void.class, "void");
-            put(Integer.class, "int");
+            put(boolean.class,"bool");
             put(int.class, "int");
-            put(Long.class, "long");
             put(long.class, "long");
-            put(Double.class, "double");
             put(double.class, "double");
-            put(Float.class, "float");
             put(float.class, "float");
-            put(Character.class, "char");
-            put(char.class, "char");
-            put(Short.class, "short");
+            put(char.class, "unsigned short");
             put(short.class, "short");
+            put(byte.class,"char");
         }
     };
 
-    private Map<String, MethodHandler> handlers = new HashMap<>();
+    private final static Map<Class<?>,String> SCRIPT_RETURN_TYPE
+            = new HashMap<Class<?>, String>()
+    {
+        {
+            put(void.class,"void");
+            put(String.class,"char *");
+            put(boolean.class,"boolean");
+            put(int.class, "int");
+            put(long.class, "long");
+            put(double.class, "double");
+            put(float.class, "float");
+            put(char.class, "unsigned short");
+            put(short.class, "short");
+            put(byte.class,"char");
+        }
+    };
+
+    private final static Map<Class<?>,String> SCRIPT_TYPE_SIG
+            = new HashMap<Class<?>,String>()
+    {
+        {
+            put(void.class,"V");
+            put(boolean.class,"Z");
+            put(int.class,"I");
+            put(long.class,"J");
+            put(double.class,"D");
+            put(float.class,"F");
+            put(char.class,"C");
+            put(short.class,"S");
+            put(byte.class,"B");
+            put(String.class,"L");
+        }
+    };
+
+
+    private Map<String, MethodHandler> methods = new HashMap<>();
 
     private PipedInputStream stderr;
     private PipedInputStream stdout;
@@ -153,6 +183,7 @@ public final class ScriptRuntime
     @WorkerThread
     public synchronized boolean doSomething(final String source)
     {
+        selfCheck();
         return AccessController.doPrivileged(new PrivilegedAction<Boolean>()
         {
             @Override
@@ -163,14 +194,16 @@ public final class ScriptRuntime
         });
     }
 
+
     public synchronized void registerHandler(Object target)
     {
+        selfCheck();
         for (Map.Entry<String, MethodHandler> entry
                 : formTarget0(target).entrySet())
         {
-            handlers.put(entry.getKey(), entry.getValue());
+            methods.put(entry.getKey(), entry.getValue());
             registerHandler0(handler, UUID.randomUUID().toString(),
-                    tokenAnalysis0(entry.getKey(),
+                    methodAnalysis0(entry.getKey(),
                             entry.getValue().method));
         }
     }
@@ -179,7 +212,7 @@ public final class ScriptRuntime
     {
         try
         {
-            MethodHandler methodHandler = handlers.get(name);
+            MethodHandler methodHandler = methods.get(name);
             return methodHandler.method.invoke(methodHandler.target, args);
         } catch (Exception e)
         {
@@ -190,6 +223,10 @@ public final class ScriptRuntime
     @Override
     public synchronized void close() throws IOException
     {
+        if (handler == 0)
+        {
+            return;
+        }
         try
         {
             AccessController.doPrivileged(new PrivilegedExceptionAction<Void>()
@@ -197,6 +234,8 @@ public final class ScriptRuntime
                 @Override
                 public Void run() throws IOException
                 {
+                    methods.clear();
+                    methods = null;
                     stdin.processExited();
                     stdout.processExited();
                     stderr.processExited();
@@ -505,6 +544,14 @@ public final class ScriptRuntime
         }
     }
 
+    private void selfCheck()
+    {
+        if (handler == 0)
+        {
+            throw new IllegalStateException("is close");
+        }
+    }
+
     private Map<String, MethodHandler> formTarget0(Object target)
     {
         Pattern pattern = Pattern.compile("[_a-zA-z][_a-zA-z0-9]*");
@@ -523,11 +570,11 @@ public final class ScriptRuntime
                     String name = handlerTarget.name();
                     if (!pattern.matcher(Objects
                             .requireNonNull(name)).matches()
-                            && !handlers.containsKey(name))
+                            && !this.methods.containsKey(name))
                     {
                         throw new IllegalArgumentException("this name is illegal '" + name + "'");
                     }
-                    if (!SCRIPT_BASIC_TYPE.containsKey(method.getReturnType()))
+                    if (!SCRIPT_RETURN_TYPE.containsKey(method.getReturnType()))
                     {
                         throw new IllegalArgumentException(method.getReturnType().getName());
                     }
@@ -535,7 +582,7 @@ public final class ScriptRuntime
                     {
                         if (void.class.equals(pramType)
                                 || Void.class.equals(pramType)
-                                || !SCRIPT_BASIC_TYPE.containsKey(pramType))
+                                || !SCRIPT_PARAMETER_TYPE.containsKey(pramType))
                         {
                             throw new IllegalArgumentException(pramType.getName());
                         }
@@ -547,11 +594,11 @@ public final class ScriptRuntime
         return result;
     }
 
-    private static String tokenAnalysis0(String name, Method method)
+    public static String methodAnalysis0(String name, Method method)
     {
         StringBuilder builder = new StringBuilder();
         Class<?> returnType = method.getReturnType();
-        builder.append(SCRIPT_BASIC_TYPE
+        builder.append(SCRIPT_RETURN_TYPE
                 .get(returnType))
                 .append(' ')
                 .append(name)
@@ -561,7 +608,7 @@ public final class ScriptRuntime
         {
             for (int index = 0; index < pramType.length; index++)
             {
-                builder.append(SCRIPT_BASIC_TYPE
+                builder.append(SCRIPT_PARAMETER_TYPE
                         .get(pramType[index]))
                         .append(' ')
                         .append('_')
@@ -573,18 +620,30 @@ public final class ScriptRuntime
             }
         }
         builder.append(')').append('{');
-        if (returnType.equals(void.class) || returnType.equals(Void.class))
+        //返回值
+        if (returnType.equals(void.class))
         {
             builder.append("__handler(")
                     .append('\"')
                     .append(name)
                     .append('\"')
                     .append(',')
+                    .append('\"')
+                    .append(SCRIPT_TYPE_SIG.get(returnType));
+            if (pramType != null && pramType.length != 0)
+            {
+                for (Class<?> item : pramType)
+                {
+                    builder.append(SCRIPT_TYPE_SIG.get(item));
+                }
+            }
+            builder.append('\"')
+                    .append(',')
                     .append("NULL")
                     .append(',');
         } else
         {
-            builder.append(SCRIPT_BASIC_TYPE.get(returnType))
+            builder.append(SCRIPT_RETURN_TYPE.get(returnType))
                     .append(' ')
                     .append('_')
                     .append('r')
@@ -594,11 +653,23 @@ public final class ScriptRuntime
                     .append(name)
                     .append('\"')
                     .append(',')
+                    .append('\"')
+                    .append(SCRIPT_TYPE_SIG.get(returnType));
+            if (pramType != null && pramType.length != 0)
+            {
+                for (Class<?> item : pramType)
+                {
+                    builder.append(SCRIPT_TYPE_SIG.get(item));
+                }
+            }
+            builder.append('\"')
+                    .append(',')
                     .append('&')
                     .append('_')
                     .append('r')
                     .append(',');
         }
+        //参数值
         if (pramType != null && pramType.length != 0)
         {
             for (int index = 0; index < pramType.length; index++)
@@ -611,7 +682,7 @@ public final class ScriptRuntime
                 }
             }
         }
-        if (returnType.equals(void.class) || returnType.equals(Void.class))
+        if (returnType.equals(void.class))
         {
             builder.append(')')
                     .append(';')

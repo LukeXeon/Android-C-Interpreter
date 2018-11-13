@@ -13,10 +13,10 @@ extern "C"
 	}
 
 
-	void Runtime__Handler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+	void __CallHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
 
 
-	void Runtime__LogW(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+	void RuntimeLogW(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
 		struct StdVararg PrintfArgs;
 		PrintfArgs.Param = Param + 1;
@@ -29,7 +29,7 @@ extern "C"
 		delete print_buffer;
 	}
 
-	void Runtime__LogI(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+	void RuntimeLogI(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
 		struct StdVararg PrintfArgs;
 		PrintfArgs.Param = Param + 1;
@@ -42,7 +42,7 @@ extern "C"
 		delete print_buffer;
 	}
 
-	void Runtime__Lineno(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+	void RuntimeLineno(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
 		ReturnValue->Val->Integer = Parser->Line;
 	}
@@ -50,10 +50,11 @@ extern "C"
 	/* list of all library functions and their prototypes */
 	struct LibraryFunction UnixFunctions[] =
 	{
-		{ Runtime__Lineno,    "int __lineno();" },
-		{ Runtime__LogW,      "int __logw(char *, ...);" },
-		{ Runtime__LogI,      "int __logi(char *, ...);" },
-		{ Runtime__Handler,   "int __handler(char *,void *, ...);" },
+		{ RuntimeLineno,    "int lineno();" },
+		{ RuntimeLogW,      "int logw(char *, ...);" },
+		{ RuntimeLogI,      "int logi(char *, ...);" },
+		{ __CallHandler,   "int __handler(char *,char *,void *, ...);" },
+							  //标识符,类型标识,返回值地址,参数列表
 		{ NULL,         NULL }
 	};
 
