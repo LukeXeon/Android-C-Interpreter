@@ -20,7 +20,7 @@ struct {
 	//method
 	unordered_map<char, Transform*> transforms;
 	function<void(JNIEnv*, jobject, int)> setDescriptor;
-	function<jobject(JNIEnv*, jobject, jstring, jobjectArray)> invokeHandler;
+	function<jobject(JNIEnv*, jobject, jstring, jobjectArray)> onInvoke;
 } Helper;
 
 static Picoc*ToHandler(jlong ptr) {
@@ -83,8 +83,8 @@ static void InitHelperMethod(JNIEnv*env)
 		env->SetIntField(fdObject, fdField, fd);
 	};
 	jmethodID invokeMethod = env->GetMethodID(env->FindClass("edu/guet/apicoc/ScriptRuntime"), "onInvoke",
-		"(Ljava/lang/String;,[Ljava/lang/Object;)Ljava/lang/Object;");
-	Helper.invokeHandler = [invokeMethod](JNIEnv*env, jobject target, jstring name, jobjectArray args)->jobject
+		"(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;");
+	Helper.onInvoke = [invokeMethod](JNIEnv*env, jobject target, jstring name, jobjectArray args)->jobject
 	{
 		return env->CallObjectMethod(target, invokeMethod, name, args);
 	};
@@ -182,15 +182,20 @@ static void InitHelperMethod(JNIEnv*env)
 	}));
 	Helper.transforms.emplace('L', new Transform([](JNIEnv* env, union AnyValue* val)->jobject
 	{
-		return env->NewStringUTF((const char*)val->Pointer);
+		return val->Pointer != nullptr ? env->NewStringUTF((const char*)val->Pointer) : nullptr;
 	},
 		[](JNIEnv* env, union AnyValue*val, jobject obj)->void
 	{
 		jstring text = (jstring)obj;
-		const char* text_ = env->GetStringUTFChars(text, 0);
-		val->Pointer = strcpy(new char[strlen(text_) + 1], text_);
-		env->ReleaseStringUTFChars(text, text_);
+		if (text != nullptr)
+		{
+			const char* text_ = env->GetStringUTFChars(text, 0);
+			*((char**)val->Pointer) = strcpy(new char[strlen(text_) + 1], text_);
+			env->ReleaseStringUTFChars(text, text_);
+		}
 	}));
+	Helper.transforms.emplace('V', new Transform([](JNIEnv* env, union AnyValue* val)->jobject {return nullptr; },
+		[](JNIEnv* env, union AnyValue*val, jobject obj)->void {}));
 }
 
 EXTERN_C
@@ -439,10 +444,12 @@ Java_edu_guet_apicoc_ScriptRuntime_registerHandler0(JNIEnv *env, jclass type, jl
 
 EXTERN_C
 JNIEXPORT void JNICALL 
-__CallHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+__callHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-	JNIEnv * env;
+	LOGI("picoc call handler : %s", (char*)Param[0]->Val->Pointer);
+	JNIEnv * env = nullptr;
 	jobject Wrapper = Parser->pc->Wrapper;
+	struct Value * ThisArg = Param;
 	if (Wrapper != nullptr)
 	{
 		Helper.javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
@@ -450,14 +457,19 @@ __CallHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value
 		{
 			const char * typeList = (const char*)Param[1]->Val->Pointer;
 			jsize length = strlen(typeList);
-			jobjectArray args = env->NewObjectArray(length, Helper.objectClass, NULL);
+			jobjectArray args = env->NewObjectArray(length - 1, Helper.objectClass, NULL);
 			for (int i = 1; i < length; i++)
 			{
+				ThisArg = (struct Value *)((char *)ThisArg + MEM_ALIGN(sizeof(struct Value) + TypeStackSizeValue(ThisArg)));
+/*
 				env->SetObjectArrayElement(args, i - 1,
-					Helper.transforms[typeList[i]]->toJava(env, Param[3 + i - 1]->Val));
+					Helper.transforms[typeList[i]]->toJava(env, Param[3 + i - 1]->Val));*/
+
 			}
+/*
+			LOGI("start call");
 			Helper.transforms[typeList[0]]->toNative(env, Param[2]->Val, Helper
-				.invokeHandler(env, Wrapper, env->NewStringUTF((char*)Param[0]->Val->Pointer), args));
+				.onInvoke(env, Wrapper, env->NewStringUTF((char*)Param[0]->Val->Pointer), args));*/
 		}
 	}
 }

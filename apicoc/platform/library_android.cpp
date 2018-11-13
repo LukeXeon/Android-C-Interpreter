@@ -13,14 +13,14 @@ extern "C"
 	}
 
 
-	void __CallHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+	void __callHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
 
 
 	void RuntimeLogW(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
 		struct StdVararg PrintfArgs;
-		PrintfArgs.Param = Param + 1;
-		PrintfArgs.NumArgs = NumArgs - 2;
+		PrintfArgs.Param = Param;
+		PrintfArgs.NumArgs = NumArgs - 1;
 		const char*format = (const char*)Param[0]->Val->Pointer;
 		int print_length = (int)(strlen(format)*1.5f) + 1;
 		char*print_buffer = new char[print_length];
@@ -32,8 +32,8 @@ extern "C"
 	void RuntimeLogI(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
 		struct StdVararg PrintfArgs;
-		PrintfArgs.Param = Param + 1;
-		PrintfArgs.NumArgs = NumArgs - 2;
+		PrintfArgs.Param = Param;
+		PrintfArgs.NumArgs = NumArgs - 1;
 		const char*format = (const char*)Param[0]->Val->Pointer;
 		int print_length = (int)(strlen(format)*1.5f) + 1;
 		char*print_buffer = new char[print_length];
@@ -53,7 +53,7 @@ extern "C"
 		{ RuntimeLineno,    "int lineno();" },
 		{ RuntimeLogW,      "int logw(char *, ...);" },
 		{ RuntimeLogI,      "int logi(char *, ...);" },
-		{ __CallHandler,   "int __handler(char *,char *,void *, ...);" },
+		{ __callHandler,   "int __handler(char *,char *,void *, ...);" },
 							  //标识符,类型标识,返回值地址,参数列表
 		{ NULL,         NULL }
 	};
