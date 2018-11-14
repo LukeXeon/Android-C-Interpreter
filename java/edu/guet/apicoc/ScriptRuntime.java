@@ -3,6 +3,7 @@ package edu.guet.apicoc;
 import android.annotation.TargetApi;
 import android.os.Build;
 import android.support.annotation.WorkerThread;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -249,12 +250,13 @@ public final class ScriptRuntime
                         && !Modifier.isStatic(method.getModifiers())
                         && handlerTarget != null)
                 {
-                    String name = handlerTarget.name();
-                    if (!pattern.matcher(Objects
-                            .requireNonNull(name)).matches()
+                    String name = handlerTarget.value();
+                    if (!pattern.matcher(TextUtils.isEmpty(name)
+                            ? Objects.requireNonNull(name) : name)
+                            .matches()
                             && !containsName0(handler, name))
                     {
-                        throw new IllegalArgumentException("this name is illegal '" + name + "'");
+                        throw new IllegalArgumentException("this value is illegal '" + name + "'");
                     }
                     if (!SCRIPT_RETURN_TYPE.containsKey(method.getReturnType()))
                     {

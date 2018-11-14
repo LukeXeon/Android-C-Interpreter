@@ -17,5 +17,5 @@ public @interface HandlerTarget
     /**
      * @return 不能有重名的签名,否则会抛出异常
      */
-    String name() default "invoke";
+    String value() ;
 }
