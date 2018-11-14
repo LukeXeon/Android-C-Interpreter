@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <functional>
 #include <unordered_map>
+#include "pool.h"
 BINGE_EXTERN_C
 #include "picoc.h"
 END_EXTERN_C

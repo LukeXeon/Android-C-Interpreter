@@ -197,7 +197,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="apicoc.h" />
-    <ClInclude Include="io.h" />
+    <ClInclude Include="print.h" />
     <ClInclude Include="interpreter.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="linenoise-ng\ConvertUTF.h" />

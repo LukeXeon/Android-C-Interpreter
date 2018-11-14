@@ -7,12 +7,13 @@ struct Transform
 {
 	Transform() {}
 	Transform(function<jobject(JNIEnv*, union AnyValue*)>&&toJObject,
-		function<void(JNIEnv*, union AnyValue*, jobject)>&&setReturn) :toJObject(toJObject), setReturn(setReturn) {}
+		function<void(JNIEnv*, Picoc*, union AnyValue*, jobject)>&&setReturn) :toJObject(toJObject), setReturn(setReturn) {}
 	function<jobject(JNIEnv*, union AnyValue*)> toJObject;
-	function<void(JNIEnv*, union AnyValue*, jobject)> setReturn;
+	function<void(JNIEnv*, Picoc*, union AnyValue*, jobject)> setReturn;
 };
 
-struct {
+struct 
+{
 	//field
 	JavaVM*javaVM;
 	jclass objectClass;
@@ -22,11 +23,13 @@ struct {
 	function<jobject(JNIEnv*, jobject, int, jobjectArray)> onInvokeHandler;
 } Helper;
 
-static Picoc*ToHandler(jlong ptr) {
+static Picoc*ToHandler(jlong ptr) 
+{
 	return (Picoc *)ptr;
 }
 
-static jlong ToJLong(void*ptr) {
+static jlong ToJLong(void*ptr) 
+{
 	return (jlong)ptr;
 }
 
@@ -119,7 +122,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Zclass, Zmethod, (jboolean)val->Integer);
 	},
-		[Zmethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Zmethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((int*)val->Pointer) = env->CallBooleanMethod(obj, Zmethod2);
 	}));
@@ -127,7 +130,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Iclass, Imethod, (jint)val->Integer);
 	},
-		[Imethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Imethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((int*)val->Pointer) = env->CallIntMethod(obj, Imethod2);
 	}));
@@ -135,7 +138,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Jclass, Jmethod, (jlong)val->LongInteger);
 	},
-		[Jmethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Jmethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((long*)val->Pointer) = env->CallLongMethod(obj, Jmethod2);
 	}));
@@ -143,7 +146,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Dclass, Dmethod, (jdouble)val->FP);
 	},
-		[Dmethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Dmethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((double*)val->Pointer) = env->CallDoubleMethod(obj, Dmethod2);
 	}));
@@ -151,7 +154,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Fclass, Fmethod, (jfloat)val->FP);
 	},
-		[Fmethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Fmethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((double*)val->Pointer) = env->CallFloatMethod(obj, Fmethod2);
 	}));
@@ -159,7 +162,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Cclass, Cmethod, (jchar)val->UnsignedShortInteger);
 	},
-		[Cmethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Cmethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((unsigned short*)val->Pointer) = env->CallCharMethod(obj, Cmethod2);
 	}));
@@ -167,7 +170,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Sclass, Smethod, (jshort)val->ShortInteger);
 	},
-		[Smethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Smethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((short*)val->Pointer) = env->CallShortMethod(obj, Smethod2);
 	}));
@@ -175,7 +178,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return env->CallStaticObjectMethod(Bclass, Bmethod, (jbyte)val->Character);
 	},
-		[Bmethod2](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[Bmethod2](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void
 	{
 		*((char*)val->Pointer) = env->CallByteMethod(obj, Bmethod2);
 	}));
@@ -183,25 +186,26 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		return val->Pointer != nullptr ? env->NewStringUTF((const char*)val->Pointer) : nullptr;
 	},
-		[](JNIEnv* env, union AnyValue*val, jobject obj)->void
+		[](JNIEnv* env, Picoc*pc, union AnyValue*val, jobject obj)->void
 	{
 		jstring text = (jstring)obj;
 		if (text != nullptr)
 		{
 			const char* text_ = env->GetStringUTFChars(text, 0);
-			*((char**)val->Pointer) = strcpy(new char[strlen(text_) + 1], text_);
+			*((char**)val->Pointer) = strcpy((char*)pool_calloc(pc->Pool, 1, sizeof(char[strlen(text_) + 1])), text_);
 			env->ReleaseStringUTFChars(text, text_);
 		}
 	}));
-	Helper.transforms.emplace('V', Transform([](JNIEnv* env, union AnyValue* val)->jobject {return nullptr; },
-		[](JNIEnv* env, union AnyValue*val, jobject obj)->void {}));
+	Helper.transforms.emplace('V', Transform([](JNIEnv* env, union AnyValue* val)->jobject {return nullptr;},
+		[](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void {}));
+
 }
 
 EXTERN_C
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM* vm, void *reserved)
 {
-	LOGI("%s", "apicoc lib load");
+	LOGI("apicoc lib load");
 	Helper.javaVM = vm;
 	JNIEnv*env = nullptr;
 	vm->GetEnv((void**)(&env), JNI_VERSION_1_6);
@@ -355,7 +359,7 @@ JNIEXPORT jint JNICALL
 Java_edu_guet_apicoc_ScriptRuntime_waitSub0(JNIEnv *env, jclass type, jint pid) {
 	int status;
 	waitpid(pid, &status, 0);
-	return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+	return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
 EXTERN_C
@@ -414,10 +418,6 @@ EXTERN_C
 JNIEXPORT void JNICALL
 Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr) 
 {
-	if (ptr == 0) 
-	{
-		return;
-	}
 	LOGI("picoc close");
 	Picoc *pc = ToHandler(ptr);
 	close(fileno(pc->CStdIn));
@@ -476,7 +476,7 @@ __InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Valu
 			}
 			jobject Result = Helper.onInvokeHandler(env, Wrapper, Param[1]->Val->Integer, Args);
 			env->DeleteLocalRef(Args);
-			Helper.transforms[PramTypeList[0]].setReturn(env, Param[3]->Val, Result);
+			Helper.transforms[PramTypeList[0]].setReturn(env, Parser->pc, Param[3]->Val, Result);
 			env->DeleteLocalRef(Result);
 		}
 	}

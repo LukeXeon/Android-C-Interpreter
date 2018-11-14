@@ -5,7 +5,7 @@ extern "C"
 {
 #include "../interpreter.h"
 #include "../pch.h"
-#include "../io.h"
+#include "../print.h"
 
 	void RuntimeSetupFunc(Picoc*pc)
 	{
@@ -53,8 +53,8 @@ extern "C"
 		{ RuntimeLineno,    "int lineno();" },
 		{ RuntimeLogW,      "int logw(char *, ...);" },
 		{ RuntimeLogI,      "int logi(char *, ...);" },
-		{ __InternalCall,    "int __internal_call(void*,int,char *,void *, ...);" },
-							 //Picoc地址(权限验证),下标,类型标识,返回值地址,参数列表
+		{ __InternalCall,   "int __internal_call(void*,int,char *,void *, ...);" },
+		//带有“__”双下划线的都是运行时内部使用的代码（地址验证,下标,类型签名,返回值地址,参数列表）
 		{ NULL,         NULL }
 	};
 
