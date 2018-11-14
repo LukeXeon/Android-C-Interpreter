@@ -1,5 +1,7 @@
 package edu.guet.apicoc;
 
+import android.annotation.TargetApi;
+import android.os.Build;
 import android.support.annotation.WorkerThread;
 import android.util.Log;
 
@@ -33,9 +35,10 @@ import java.util.regex.Pattern;
 
 
 /**
+ * C Script 脚本运行时
  * Created by Mr.小世界 on 2018/10/31.
  */
-
+@TargetApi(Build.VERSION_CODES.KITKAT)
 @SuppressWarnings("JniMissingFunction")
 public final class ScriptRuntime
         implements AutoCloseable,
@@ -105,6 +108,9 @@ public final class ScriptRuntime
         System.loadLibrary("apicoc");
     }
 
+    /**
+     * 使用无参构造函数,构造一个新的解释器实例
+     */
     public ScriptRuntime()
     {
         AccessController.doPrivileged(new PrivilegedAction<Void>()
@@ -124,24 +130,40 @@ public final class ScriptRuntime
         });
     }
 
+    /**
+     * @return 返回解释器的stdin输出端
+     */
     @Override
     public OutputStream getOutputStream()
     {
         return stdin;
     }
 
+    /**
+     * @return 返回解释器的stdout输入端
+     */
     @Override
     public InputStream getInputStream()
     {
         return stdout;
     }
 
+    /**
+     * @return 返回解释器的stderr输出端
+     */
     @Override
     public InputStream getErrorStream()
     {
         return stderr;
     }
 
+    /**
+     * 在子进程中启动解释器
+     * @param files 要执行的文件
+     * @param args 调用时的参数
+     * @return 返回执行解释器的子进程
+     * @see ScriptingIOProcess
+     */
     public static ScriptingIOProcess exec(List<File> files, List<String> args)
     {
         files = Collections.unmodifiableList(files == null ? Collections.<File>emptyList() : files);
@@ -159,6 +181,13 @@ public final class ScriptRuntime
         return new ScriptingProcess(null, filePaths, callArgs);
     }
 
+    /**
+     * 在子进程中启动解释器
+     * @param scripts 要执行的源代码
+     * @param args 调用时的参数
+     * @return 返回执行解释器的子进程
+     * @see ScriptingIOProcess
+     */
     public static ScriptingIOProcess exec(Map<String, String> scripts, List<String> args)
     {
         scripts = Collections.unmodifiableMap(scripts == null ? Collections.<String, String>emptyMap() : scripts);
@@ -180,6 +209,11 @@ public final class ScriptRuntime
         return new ScriptingProcess(names, srcs, callArgs);
     }
 
+    /**
+     * 直接执行一段脚本代码,此方法只能以同步的方式执行
+     * @param source 要执行的一段代码
+     * @return 返回是否执行成功
+     */
     @WorkerThread
     public synchronized boolean doSomething(final String source)
     {
@@ -194,7 +228,12 @@ public final class ScriptRuntime
         });
     }
 
-
+    /**
+     * 注册所有有@HandlerTarget注解修饰的非静态方法
+     * @param target 注册的目标对象
+     * @see HandlerTarget
+     * @exception IllegalArgumentException 非法参数
+     */
     public synchronized void registerHandler(Object target)
     {
         selfCheck();
@@ -236,6 +275,10 @@ public final class ScriptRuntime
         }
     }
 
+    /**
+     *关闭解释器并清理资源
+     * @throws IOException
+     */
     @Override
     public synchronized void close() throws IOException
     {
