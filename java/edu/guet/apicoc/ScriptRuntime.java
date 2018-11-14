@@ -1,6 +1,7 @@
 package edu.guet.apicoc;
 
 import android.support.annotation.WorkerThread;
+import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -47,48 +48,48 @@ public final class ScriptRuntime
     {
         {
             put(String.class, "char *");
-            put(boolean.class,"bool");
+            put(boolean.class, "bool");
             put(int.class, "int");
             put(long.class, "long");
             put(double.class, "double");
             put(float.class, "float");
             put(char.class, "unsigned short");
             put(short.class, "short");
-            put(byte.class,"char");
+            put(byte.class, "char");
         }
     };
 
-    private final static Map<Class<?>,String> SCRIPT_RETURN_TYPE
+    private final static Map<Class<?>, String> SCRIPT_RETURN_TYPE
             = new HashMap<Class<?>, String>()
     {
         {
-            put(void.class,"void");
-            put(String.class,"char *");
-            put(boolean.class,"boolean");
+            put(void.class, "void");
+            put(String.class, "char *");
+            put(boolean.class, "boolean");
             put(int.class, "int");
             put(long.class, "long");
             put(double.class, "double");
             put(float.class, "float");
             put(char.class, "unsigned short");
             put(short.class, "short");
-            put(byte.class,"char");
+            put(byte.class, "char");
         }
     };
 
-    private final static Map<Class<?>,String> SCRIPT_TYPE_SIG
-            = new HashMap<Class<?>,String>()
+    private final static Map<Class<?>, String> SCRIPT_TYPE_SIG
+            = new HashMap<Class<?>, String>()
     {
         {
-            put(void.class,"V");
-            put(boolean.class,"Z");
-            put(int.class,"I");
-            put(long.class,"J");
-            put(double.class,"D");
-            put(float.class,"F");
-            put(char.class,"C");
-            put(short.class,"S");
-            put(byte.class,"B");
-            put(String.class,"L");
+            put(void.class, "V");
+            put(boolean.class, "Z");
+            put(int.class, "I");
+            put(long.class, "J");
+            put(double.class, "D");
+            put(float.class, "F");
+            put(char.class, "C");
+            put(short.class, "S");
+            put(byte.class, "B");
+            put(String.class, "L");
         }
     };
 
@@ -203,13 +204,14 @@ public final class ScriptRuntime
         {
             methods.put(entry.getKey(), entry.getValue());
             registerHandler0(handler, UUID.randomUUID().toString(),
-                    methodAnalysis0(entry.getKey(),
+                    parseMethod0(entry.getKey(),
                             entry.getValue().method));
         }
     }
 
     private Object onInvoke(String name, Object[] args)
     {
+        selfCheck();
         try
         {
             MethodHandler methodHandler = methods.get(name);
@@ -570,7 +572,8 @@ public final class ScriptRuntime
                     String name = handlerTarget.name();
                     if (!pattern.matcher(Objects
                             .requireNonNull(name)).matches()
-                            && !this.methods.containsKey(name))
+                            && !this.methods.containsKey(name)
+                            && !containsName0(handler,name))
                     {
                         throw new IllegalArgumentException("this name is illegal '" + name + "'");
                     }
@@ -594,7 +597,7 @@ public final class ScriptRuntime
         return result;
     }
 
-    public static String methodAnalysis0(String name, Method method)
+    private String parseMethod0(String name, Method method)
     {
         StringBuilder builder = new StringBuilder();
         Class<?> returnType = method.getReturnType();
@@ -624,6 +627,8 @@ public final class ScriptRuntime
         if (returnType.equals(void.class))
         {
             builder.append("__handler(")
+                    .append(handler)
+                    .append(',')
                     .append('\"')
                     .append(name)
                     .append('\"')
@@ -649,6 +654,8 @@ public final class ScriptRuntime
                     .append('r')
                     .append(';')
                     .append("__handler(")
+                    .append(handler)
+                    .append(',')
                     .append('\"')
                     .append(name)
                     .append('\"')
@@ -698,6 +705,7 @@ public final class ScriptRuntime
                     .append(';')
                     .append('}');
         }
+        Log.i(TAG, "parseMethod0: " + builder);
         return builder.toString();
     }
 
@@ -707,6 +715,8 @@ public final class ScriptRuntime
                                          FileDescriptor stdinFd,
                                          FileDescriptor stdoutFd,
                                          FileDescriptor stderrFd);
+
+    private static native boolean containsName0(long handler, String name);
 
     private static native int waitSub0(int pid);
 

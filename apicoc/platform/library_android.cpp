@@ -53,8 +53,8 @@ extern "C"
 		{ RuntimeLineno,    "int lineno();" },
 		{ RuntimeLogW,      "int logw(char *, ...);" },
 		{ RuntimeLogI,      "int logi(char *, ...);" },
-		{ __callHandler,   "int __handler(char *,char *,void *, ...);" },
-							  //标识符,类型标识,返回值地址,参数列表
+		{ __callHandler,    "int __handler(long,char *,char *,void *, ...);" },
+							 //Picoc地址(权限验证),标识符,类型标识,返回值地址,参数列表
 		{ NULL,         NULL }
 	};
 

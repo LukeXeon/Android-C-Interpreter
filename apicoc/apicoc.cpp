@@ -5,12 +5,11 @@ using namespace std;
 
 struct Transform
 {
-	Transform() = delete;
-	Transform(const Transform&) = delete;
-	Transform(function<jobject(JNIEnv*, union AnyValue*)>&&toJava,
-		function<void(JNIEnv*, union AnyValue*, jobject)>&&toNative) :toJava(toJava), toNative(toNative) {}
-	const function<jobject(JNIEnv*, union AnyValue*)> toJava;
-	const function<void(JNIEnv*, union AnyValue*, jobject)> toNative;
+	Transform() {}
+	Transform(function<jobject(JNIEnv*, union AnyValue*)>&&toJObject,
+		function<void(JNIEnv*, union AnyValue*, jobject)>&&setReturn) :toJObject(toJObject), setReturn(setReturn) {}
+	function<jobject(JNIEnv*, union AnyValue*)> toJObject;
+	function<void(JNIEnv*, union AnyValue*, jobject)> setReturn;
 };
 
 struct {
@@ -18,9 +17,9 @@ struct {
 	JavaVM*javaVM;
 	jclass objectClass;
 	//method
-	unordered_map<char, Transform*> transforms;
+	unordered_map<char, Transform> transforms;
 	function<void(JNIEnv*, jobject, int)> setDescriptor;
-	function<jobject(JNIEnv*, jobject, jstring, jobjectArray)> onInvoke;
+	function<jobject(JNIEnv*, jobject, jstring, jobjectArray)> onInvokeHandler;
 } Helper;
 
 static Picoc*ToHandler(jlong ptr) {
@@ -84,7 +83,7 @@ static void InitHelperMethod(JNIEnv*env)
 	};
 	jmethodID invokeMethod = env->GetMethodID(env->FindClass("edu/guet/apicoc/ScriptRuntime"), "onInvoke",
 		"(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;");
-	Helper.onInvoke = [invokeMethod](JNIEnv*env, jobject target, jstring name, jobjectArray args)->jobject
+	Helper.onInvokeHandler = [invokeMethod](JNIEnv*env, jobject target, jstring name, jobjectArray args)->jobject
 	{
 		return env->CallObjectMethod(target, invokeMethod, name, args);
 	};
@@ -116,7 +115,7 @@ static void InitHelperMethod(JNIEnv*env)
 	jmethodID Smethod2 = env->GetMethodID(Sclass, "shortValue", "()S");
 	jmethodID Bmethod2 = env->GetMethodID(Bclass, "byteValue", "()B");
 
-	Helper.transforms.emplace('Z', new Transform([Zclass, Zmethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('Z', Transform([Zclass, Zmethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Zclass, Zmethod, (jboolean)val->Integer);
 	},
@@ -124,7 +123,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((int*)val->Pointer) = env->CallBooleanMethod(obj, Zmethod2);
 	}));
-	Helper.transforms.emplace('I', new Transform([Iclass, Imethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('I', Transform([Iclass, Imethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Iclass, Imethod, (jint)val->Integer);
 	},
@@ -132,7 +131,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((int*)val->Pointer) = env->CallIntMethod(obj, Imethod2);
 	}));
-	Helper.transforms.emplace('J', new Transform([Jclass, Jmethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('J', Transform([Jclass, Jmethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Jclass, Jmethod, (jlong)val->LongInteger);
 	},
@@ -140,7 +139,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((long*)val->Pointer) = env->CallLongMethod(obj, Jmethod2);
 	}));
-	Helper.transforms.emplace('D', new Transform([Dclass, Dmethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('D', Transform([Dclass, Dmethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Dclass, Dmethod, (jdouble)val->FP);
 	},
@@ -148,7 +147,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((double*)val->Pointer) = env->CallDoubleMethod(obj, Dmethod2);
 	}));
-	Helper.transforms.emplace('F', new Transform([Fclass, Fmethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('F', Transform([Fclass, Fmethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Fclass, Fmethod, (jfloat)val->FP);
 	},
@@ -156,7 +155,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((double*)val->Pointer) = env->CallFloatMethod(obj, Fmethod2);
 	}));
-	Helper.transforms.emplace('C', new Transform([Cclass, Cmethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('C', Transform([Cclass, Cmethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Cclass, Cmethod, (jchar)val->UnsignedShortInteger);
 	},
@@ -164,7 +163,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((unsigned short*)val->Pointer) = env->CallCharMethod(obj, Cmethod2);
 	}));
-	Helper.transforms.emplace('S', new Transform([Sclass, Smethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('S', Transform([Sclass, Smethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Sclass, Smethod, (jshort)val->ShortInteger);
 	},
@@ -172,7 +171,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((short*)val->Pointer) = env->CallShortMethod(obj, Smethod2);
 	}));
-	Helper.transforms.emplace('B', new Transform([Bclass, Bmethod](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('B', Transform([Bclass, Bmethod](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return env->CallStaticObjectMethod(Bclass, Bmethod, (jbyte)val->Character);
 	},
@@ -180,7 +179,7 @@ static void InitHelperMethod(JNIEnv*env)
 	{
 		*((char*)val->Pointer) = env->CallByteMethod(obj, Bmethod2);
 	}));
-	Helper.transforms.emplace('L', new Transform([](JNIEnv* env, union AnyValue* val)->jobject
+	Helper.transforms.emplace('L', Transform([](JNIEnv* env, union AnyValue* val)->jobject
 	{
 		return val->Pointer != nullptr ? env->NewStringUTF((const char*)val->Pointer) : nullptr;
 	},
@@ -194,7 +193,7 @@ static void InitHelperMethod(JNIEnv*env)
 			env->ReleaseStringUTFChars(text, text_);
 		}
 	}));
-	Helper.transforms.emplace('V', new Transform([](JNIEnv* env, union AnyValue* val)->jobject {return nullptr; },
+	Helper.transforms.emplace('V', Transform([](JNIEnv* env, union AnyValue* val)->jobject {return nullptr; },
 		[](JNIEnv* env, union AnyValue*val, jobject obj)->void {}));
 }
 
@@ -443,33 +442,41 @@ Java_edu_guet_apicoc_ScriptRuntime_registerHandler0(JNIEnv *env, jclass type, jl
 }
 
 EXTERN_C
+JNIEXPORT jboolean JNICALL
+Java_edu_guet_apicoc_ScriptRuntime_containsName0(JNIEnv *env, jclass type, jlong ptr, jstring name_)
+{
+	struct Value *value;
+	Picoc*pc = ToHandler(ptr);
+	const char * name = env->GetStringUTFChars(name_, 0);
+	jboolean result = TableGet(&pc->GlobalTable, name, &value, NULL, NULL, NULL);
+	env->ReleaseStringUTFChars(name_, name);
+	return result;
+}
+
+EXTERN_C
 JNIEXPORT void JNICALL 
 __callHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-	LOGI("picoc call handler : %s", (char*)Param[0]->Val->Pointer);
+	LOGI("picoc call handler : %s", (char*)Param[1]->Val->Pointer);
 	JNIEnv * env = nullptr;
 	jobject Wrapper = Parser->pc->Wrapper;
-	struct Value * ThisArg = Param;
-	if (Wrapper != nullptr)
+	struct Value * ThisArg = (Param + 3)[0];
+	if (Wrapper != nullptr&&Param[0]->Val->LongInteger == ToJLong(Parser->pc))
 	{
 		Helper.javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
 		if (env != nullptr && !env->IsSameObject(Wrapper, NULL))
 		{
-			const char * typeList = (const char*)Param[1]->Val->Pointer;
+			const char * typeList = (const char*)Param[2]->Val->Pointer;
 			jsize length = strlen(typeList);
 			jobjectArray args = env->NewObjectArray(length - 1, Helper.objectClass, NULL);
 			for (int i = 1; i < length; i++)
 			{
 				ThisArg = (struct Value *)((char *)ThisArg + MEM_ALIGN(sizeof(struct Value) + TypeStackSizeValue(ThisArg)));
-/*
 				env->SetObjectArrayElement(args, i - 1,
-					Helper.transforms[typeList[i]]->toJava(env, Param[3 + i - 1]->Val));*/
-
+					Helper.transforms[typeList[i]].toJObject(env, ThisArg->Val));
 			}
-/*
-			LOGI("start call");
-			Helper.transforms[typeList[0]]->toNative(env, Param[2]->Val, Helper
-				.onInvoke(env, Wrapper, env->NewStringUTF((char*)Param[0]->Val->Pointer), args));*/
+			Helper.transforms[typeList[0]].setReturn(env, Param[3]->Val, Helper
+				.onInvokeHandler(env, Wrapper, env->NewStringUTF((char*)Param[1]->Val->Pointer), args));
 		}
 	}
 }
