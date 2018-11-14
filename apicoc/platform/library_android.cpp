@@ -13,7 +13,7 @@ extern "C"
 	}
 
 
-	void __callHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+	void __InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
 
 
 	void RuntimeLogW(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -53,8 +53,8 @@ extern "C"
 		{ RuntimeLineno,    "int lineno();" },
 		{ RuntimeLogW,      "int logw(char *, ...);" },
 		{ RuntimeLogI,      "int logi(char *, ...);" },
-		{ __callHandler,    "int __handler(long,char *,char *,void *, ...);" },
-							 //Picoc地址(权限验证),标识符,类型标识,返回值地址,参数列表
+		{ __InternalCall,    "int __internal_call(void*,int,char *,void *, ...);" },
+							 //Picoc地址(权限验证),下标,类型标识,返回值地址,参数列表
 		{ NULL,         NULL }
 	};
 

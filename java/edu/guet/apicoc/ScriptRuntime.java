@@ -20,13 +20,13 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -93,8 +93,7 @@ public final class ScriptRuntime
         }
     };
 
-
-    private Map<String, MethodHandler> methods = new HashMap<>();
+    private List<MethodHandler> methodHandlers = new ArrayList<>();
 
     private PipedInputStream stderr;
     private PipedInputStream stdout;
@@ -199,26 +198,41 @@ public final class ScriptRuntime
     public synchronized void registerHandler(Object target)
     {
         selfCheck();
-        for (Map.Entry<String, MethodHandler> entry
-                : formTarget0(target).entrySet())
+        Pattern pattern = Pattern.compile("[_a-zA-z][_a-zA-z0-9]*");
+        Method[] methods = target.getClass().getMethods();
+        if (methods != null && methods.length != 0)
         {
-            methods.put(entry.getKey(), entry.getValue());
-            registerHandler0(handler, UUID.randomUUID().toString(),
-                    parseMethod0(entry.getKey(),
-                            entry.getValue().method));
-        }
-    }
-
-    private Object onInvoke(String name, Object[] args)
-    {
-        selfCheck();
-        try
-        {
-            MethodHandler methodHandler = methods.get(name);
-            return methodHandler.method.invoke(methodHandler.target, args);
-        } catch (Exception e)
-        {
-            throw new RuntimeException(e);
+            for (Method method : methods)
+            {
+                HandlerTarget handlerTarget
+                        = method.getAnnotation(HandlerTarget.class);
+                if (Modifier.isPublic(method.getModifiers())
+                        && !Modifier.isStatic(method.getModifiers())
+                        && handlerTarget != null)
+                {
+                    String name = handlerTarget.name();
+                    if (!pattern.matcher(Objects
+                            .requireNonNull(name)).matches()
+                            && !containsName0(handler, name))
+                    {
+                        throw new IllegalArgumentException("this name is illegal '" + name + "'");
+                    }
+                    if (!SCRIPT_RETURN_TYPE.containsKey(method.getReturnType()))
+                    {
+                        throw new IllegalArgumentException(method.getReturnType().getName());
+                    }
+                    for (Class<?> pramType : method.getParameterTypes())
+                    {
+                        if (void.class.equals(pramType)
+                                || !SCRIPT_PARAMETER_TYPE.containsKey(pramType))
+                        {
+                            throw new IllegalArgumentException(pramType.getName());
+                        }
+                    }
+                    methodHandlers.add(new MethodHandler(target, method));
+                    registerHandler0(handler, generateScript(name, methodHandlers.size() - 1, method));
+                }
+            }
         }
     }
 
@@ -236,8 +250,8 @@ public final class ScriptRuntime
                 @Override
                 public Void run() throws IOException
                 {
-                    methods.clear();
-                    methods = null;
+                    methodHandlers.clear();
+                    methodHandlers = null;
                     stdin.processExited();
                     stdout.processExited();
                     stderr.processExited();
@@ -554,52 +568,9 @@ public final class ScriptRuntime
         }
     }
 
-    private Map<String, MethodHandler> formTarget0(Object target)
+    private String generateScript(String name, int handlerIndex, Method method)
     {
-        Pattern pattern = Pattern.compile("[_a-zA-z][_a-zA-z0-9]*");
-        Method[] methods = target.getClass().getMethods();
-        Map<String, MethodHandler> result = new HashMap<>();
-        if (methods != null && methods.length != 0)
-        {
-            for (Method method : methods)
-            {
-                HandlerTarget handlerTarget
-                        = method.getAnnotation(HandlerTarget.class);
-                if (Modifier.isPublic(method.getModifiers())
-                        && !Modifier.isStatic(method.getModifiers())
-                        && handlerTarget != null)
-                {
-                    String name = handlerTarget.name();
-                    if (!pattern.matcher(Objects
-                            .requireNonNull(name)).matches()
-                            && !this.methods.containsKey(name)
-                            && !containsName0(handler,name))
-                    {
-                        throw new IllegalArgumentException("this name is illegal '" + name + "'");
-                    }
-                    if (!SCRIPT_RETURN_TYPE.containsKey(method.getReturnType()))
-                    {
-                        throw new IllegalArgumentException(method.getReturnType().getName());
-                    }
-                    for (Class<?> pramType : method.getParameterTypes())
-                    {
-                        if (void.class.equals(pramType)
-                                || Void.class.equals(pramType)
-                                || !SCRIPT_PARAMETER_TYPE.containsKey(pramType))
-                        {
-                            throw new IllegalArgumentException(pramType.getName());
-                        }
-                    }
-                    result.put(name, new MethodHandler(target, method));
-                }
-            }
-        }
-        return result;
-    }
-
-    private String parseMethod0(String name, Method method)
-    {
-        StringBuilder builder = new StringBuilder();
+        StringBuilder builder = new StringBuilder(128);
         Class<?> returnType = method.getReturnType();
         builder.append(SCRIPT_RETURN_TYPE
                 .get(returnType))
@@ -626,12 +597,10 @@ public final class ScriptRuntime
         //返回值
         if (returnType.equals(void.class))
         {
-            builder.append("__handler(")
+            builder.append("__internal_call((void*)")
                     .append(handler)
                     .append(',')
-                    .append('\"')
-                    .append(name)
-                    .append('\"')
+                    .append(handlerIndex)
                     .append(',')
                     .append('\"')
                     .append(SCRIPT_TYPE_SIG.get(returnType));
@@ -653,12 +622,10 @@ public final class ScriptRuntime
                     .append('_')
                     .append('r')
                     .append(';')
-                    .append("__handler(")
+                    .append("__internal_call((void*)")
                     .append(handler)
                     .append(',')
-                    .append('\"')
-                    .append(name)
-                    .append('\"')
+                    .append(handlerIndex)
                     .append(',')
                     .append('\"')
                     .append(SCRIPT_TYPE_SIG.get(returnType));
@@ -705,8 +672,21 @@ public final class ScriptRuntime
                     .append(';')
                     .append('}');
         }
-        Log.i(TAG, "parseMethod0: " + builder);
+        Log.i(TAG, "generateScript: " + builder);
         return builder.toString();
+    }
+
+    private Object onInvoke(int index, Object[] args)
+    {
+        selfCheck();
+        try
+        {
+            MethodHandler methodHandler = methodHandlers.get(index);
+            return methodHandler.method.invoke(methodHandler.target, args);
+        } catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     private static native int createSub0(String[] srcNames,
@@ -730,5 +710,5 @@ public final class ScriptRuntime
 
     private static native boolean doSomething0(long handler, String source);
 
-    private static native void registerHandler0(long handler, String id, String registerText);
+    private static native void registerHandler0(long handler, String registerText);
 }

@@ -19,7 +19,7 @@ struct {
 	//method
 	unordered_map<char, Transform> transforms;
 	function<void(JNIEnv*, jobject, int)> setDescriptor;
-	function<jobject(JNIEnv*, jobject, jstring, jobjectArray)> onInvokeHandler;
+	function<jobject(JNIEnv*, jobject, int, jobjectArray)> onInvokeHandler;
 } Helper;
 
 static Picoc*ToHandler(jlong ptr) {
@@ -82,10 +82,10 @@ static void InitHelperMethod(JNIEnv*env)
 		env->SetIntField(fdObject, fdField, fd);
 	};
 	jmethodID invokeMethod = env->GetMethodID(env->FindClass("edu/guet/apicoc/ScriptRuntime"), "onInvoke",
-		"(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;");
-	Helper.onInvokeHandler = [invokeMethod](JNIEnv*env, jobject target, jstring name, jobjectArray args)->jobject
+		"(I[Ljava/lang/Object;)Ljava/lang/Object;");
+	Helper.onInvokeHandler = [invokeMethod](JNIEnv*env, jobject target, int index, jobjectArray args)->jobject
 	{
-		return env->CallObjectMethod(target, invokeMethod, name, args);
+		return env->CallObjectMethod(target, invokeMethod, index, args);
 	};
 
 	jclass Zclass = (jclass)env->NewGlobalRef(env->FindClass("java/lang/Boolean"));
@@ -430,15 +430,13 @@ Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr)
 
 EXTERN_C
 JNIEXPORT void JNICALL
-Java_edu_guet_apicoc_ScriptRuntime_registerHandler0(JNIEnv *env, jclass type, jlong ptr, jstring id_, jstring text_)
+Java_edu_guet_apicoc_ScriptRuntime_registerHandler0(JNIEnv *env, jclass type, jlong ptr, jstring text_)
 {
 	LOGI("picoc add handler");
 	Picoc *pc = ToHandler(ptr);
 	const char* text = env->GetStringUTFChars(text_, 0);
-	const char* id = env->GetStringUTFChars(id_, 0);
-	PicocParse(pc, id, text, strlen(text) + 1, true, false, false, true);
+	PicocParse(pc, "__internal_call", text, strlen(text) + 1, true, false, false, true);
 	env->ReleaseStringUTFChars(text_, text);
-	env->ReleaseStringUTFChars(id_, id);
 }
 
 EXTERN_C
@@ -455,28 +453,31 @@ Java_edu_guet_apicoc_ScriptRuntime_containsName0(JNIEnv *env, jclass type, jlong
 
 EXTERN_C
 JNIEXPORT void JNICALL 
-__callHandler(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+__InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-	LOGI("picoc call handler : %s", (char*)Param[1]->Val->Pointer);
+	LOGI("picoc call handler");
 	JNIEnv * env = nullptr;
 	jobject Wrapper = Parser->pc->Wrapper;
 	struct Value * ThisArg = (Param + 3)[0];
-	if (Wrapper != nullptr&&Param[0]->Val->LongInteger == ToJLong(Parser->pc))
+	if (Wrapper != nullptr&&Param[0]->Val->Pointer == Parser->pc)
 	{
 		Helper.javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
 		if (env != nullptr && !env->IsSameObject(Wrapper, NULL))
 		{
-			const char * typeList = (const char*)Param[2]->Val->Pointer;
-			jsize length = strlen(typeList);
-			jobjectArray args = env->NewObjectArray(length - 1, Helper.objectClass, NULL);
-			for (int i = 1; i < length; i++)
+			const char * PramTypeList = (const char*)Param[2]->Val->Pointer;
+			jsize Length = strlen(PramTypeList);
+			jobjectArray Args = env->NewObjectArray(Length - 1, Helper.objectClass, NULL);
+			for (int i = 1; i < Length; i++)
 			{
 				ThisArg = (struct Value *)((char *)ThisArg + MEM_ALIGN(sizeof(struct Value) + TypeStackSizeValue(ThisArg)));
-				env->SetObjectArrayElement(args, i - 1,
-					Helper.transforms[typeList[i]].toJObject(env, ThisArg->Val));
+				jobject item = Helper.transforms[PramTypeList[i]].toJObject(env, ThisArg->Val);
+				env->SetObjectArrayElement(Args, i - 1, item);
+				env->DeleteLocalRef(item);
 			}
-			Helper.transforms[typeList[0]].setReturn(env, Param[3]->Val, Helper
-				.onInvokeHandler(env, Wrapper, env->NewStringUTF((char*)Param[1]->Val->Pointer), args));
+			jobject Result = Helper.onInvokeHandler(env, Wrapper, Param[1]->Val->Integer, Args);
+			env->DeleteLocalRef(Args);
+			Helper.transforms[PramTypeList[0]].setReturn(env, Param[3]->Val, Result);
+			env->DeleteLocalRef(Result);
 		}
 	}
 }
