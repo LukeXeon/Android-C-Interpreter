@@ -37,6 +37,8 @@ import java.util.regex.Pattern;
 
 /**
  * C Script 脚本运行时
+ * 支持的基本类型
+ * @see String boolean int long double float char short byte void
  * Created by Mr.小世界 on 2018/10/31.
  */
 @TargetApi(Build.VERSION_CODES.KITKAT)
@@ -102,6 +104,10 @@ public final class ScriptRuntime
     private PipedInputStream stderr;
     private PipedInputStream stdout;
     private PipedOutputStream stdin;
+
+    /**
+     * 本地对象的指针
+     */
     private long handler;
 
     static
@@ -165,21 +171,45 @@ public final class ScriptRuntime
      * @return 返回执行解释器的子进程
      * @see ScriptingIOProcess
      */
-    public static ScriptingIOProcess exec(List<File> files, List<String> args)
+    public static ScriptingIOProcess exec(File[] files, String[] args)
     {
-        files = Collections.unmodifiableList(files == null ? Collections.<File>emptyList() : files);
-        args = Collections.unmodifiableList(args == null ? Collections.<String>emptyList() : args);
-        String[] filePaths = new String[files.size()];
-        String[] callArgs = new String[args.size()];
-        for (int i = 0; i < files.size(); i++)
+        List<String> fileList = null;
+        List<String> argList = null;
+        if (files != null)
         {
-            filePaths[i] = Objects.requireNonNull(files.get(i)).getAbsolutePath();
-        }
-        for (int i = 0; i < args.size(); i++)
+            fileList = new ArrayList<>();
+            for (File file : files)
+            {
+                if (file != null && file.exists() && file.isFile())
+                {
+                    fileList.add(file.getAbsolutePath());
+                }
+            }
+        } else
         {
-            callArgs[i] = Objects.requireNonNull(args.get(i));
+            fileList = Collections.emptyList();
         }
-        return new ScriptingProcess(null, filePaths, callArgs);
+        if (fileList.size() == 0)
+        {
+            throw new RuntimeException();
+        }
+        if (args != null)
+        {
+            argList = new ArrayList<>();
+            for (String arg : args)
+            {
+                if (TextUtils.isEmpty(arg))
+                {
+                    argList.add(arg);
+                }
+            }
+        } else
+        {
+            argList = Collections.emptyList();
+        }
+        return new ScriptingProcess(ScriptingProcess.FILE_MODE,
+                fileList.toArray(new String[fileList.size()]),
+                argList.toArray(new String[argList.size()]));
     }
 
     /**
@@ -189,25 +219,41 @@ public final class ScriptRuntime
      * @return 返回执行解释器的子进程
      * @see ScriptingIOProcess
      */
-    public static ScriptingIOProcess exec(Map<String, String> scripts, List<String> args)
+    public static ScriptingIOProcess exec(String[] scripts, String[] args)
     {
-        scripts = Collections.unmodifiableMap(scripts == null ? Collections.<String, String>emptyMap() : scripts);
-        args = Collections.unmodifiableList(args == null ? Collections.<String>emptyList() : args);
-        String[] callArgs = new String[args.size()];
-        String[] names = new String[scripts.size()];
-        String[] srcs = new String[scripts.size()];
-        int index = 0;
-        for (Map.Entry<String, String> entry : scripts.entrySet())
+        List<String> scriptList = null;
+        List<String> argList = null;
+        if (scripts != null)
         {
-            names[index] = Objects.requireNonNull(entry.getKey());
-            srcs[index] = Objects.requireNonNull(entry.getValue());
-            index++;
-        }
-        for (int i = 0; i < args.size(); i++)
+            scriptList = new ArrayList<>();
+            for (String script : scripts)
+            {
+                if (TextUtils.isEmpty(script))
+                {
+                    scriptList.add(script);
+                }
+            }
+        } else
         {
-            callArgs[i] = Objects.requireNonNull(args.get(i));
+            scriptList = Collections.emptyList();
         }
-        return new ScriptingProcess(names, srcs, callArgs);
+        if (args != null)
+        {
+            argList = new ArrayList<>();
+            for (String arg : args)
+            {
+                if (TextUtils.isEmpty(arg))
+                {
+                    argList.add(arg);
+                }
+            }
+        } else
+        {
+            argList = Collections.emptyList();
+        }
+        return new ScriptingProcess(ScriptingProcess.SOURCE_MODE,
+                scriptList.toArray(new String[scriptList.size()]),
+                argList.toArray(new String[argList.size()]));
     }
 
     /**
@@ -332,6 +378,9 @@ public final class ScriptRuntime
 
     private static final class ScriptingProcess extends ScriptingIOProcess
     {
+        private final static int SOURCE_MODE = 0;
+        private final static int FILE_MODE = 1;
+
         private static final String TAG = "ScriptingProcess";
         private static final ExecutorService processReaperExecutor
                 = AccessController.doPrivileged(new PrivilegedAction<ExecutorService>()
@@ -350,7 +399,7 @@ public final class ScriptRuntime
         private PipedInputStream stdout;
         private PipedOutputStream stdin;
 
-        private ScriptingProcess(final String[] srcNames,
+        private ScriptingProcess(final int mode,
                                  final String[] srcOrFile,
                                  final String[] args)
         {
@@ -362,7 +411,7 @@ public final class ScriptRuntime
                     FileDescriptor stdinFd = new FileDescriptor();
                     final FileDescriptor stdoutFd = new FileDescriptor();
                     FileDescriptor stderrFd = new FileDescriptor();
-                    pid = createSub0(srcNames, srcOrFile, args, stdinFd, stdoutFd, stderrFd);
+                    pid = createSub0(mode, srcOrFile, args, stdinFd, stdoutFd, stderrFd);
                     stdin = new PipedOutputStream(stdinFd);
                     stdout = new PipedInputStream(stdoutFd);
                     stderr = new PipedInputStream(stderrFd);
@@ -734,7 +783,7 @@ public final class ScriptRuntime
         }
     }
 
-    private static native int createSub0(String[] srcNames,
+    private static native int createSub0(int mode,
                                          String[] srcOrFile,
                                          String[] args,
                                          FileDescriptor stdinFd,

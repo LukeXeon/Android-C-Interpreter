@@ -7,7 +7,8 @@ struct Transform
 {
 	Transform() {}
 	Transform(function<jobject(JNIEnv*, union AnyValue*)>&&toJObject,
-		function<void(JNIEnv*, Picoc*, union AnyValue*, jobject)>&&setReturn) :toJObject(toJObject), setReturn(setReturn) {}
+		function<void(JNIEnv*, Picoc*, union AnyValue*, jobject)>&&setReturn) 
+		:toJObject(toJObject), setReturn(setReturn) {}
 	function<jobject(JNIEnv*, union AnyValue*)> toJObject;
 	function<void(JNIEnv*, Picoc*, union AnyValue*, jobject)> setReturn;
 };
@@ -216,13 +217,12 @@ JNI_OnLoad(JavaVM* vm, void *reserved)
 
 EXTERN_C
 JNIEXPORT jint JNICALL
-Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jobjectArray srcNames,
+Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jint mode,
 	jobjectArray srcOrFile, jobjectArray args,
 	jobject stdinFd, jobject stdoutFd, jobject stderrFd) {
 	int c_fd[3] = { 0 };
 	int child_pid = 0;
 	int c_length = 0;
-	char **c_src_names = nullptr;
 	char **c_src_or_file = nullptr;
 	int c_argc = env->GetArrayLength(args);
 	char ** c_argv = nullptr;
@@ -231,29 +231,13 @@ Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jobjectA
 	c_length = env->GetArrayLength(srcOrFile);
 	if (c_length != 0)
 	{
-		function<void(int)> action = [&env, &c_src_or_file, &srcOrFile](int index)->void
+		c_src_or_file = new char*[c_length];
+		for (int index = 0; index < c_length; index++)
 		{
 			jstring src_string = (jstring)env->GetObjectArrayElement(srcOrFile, index);
 			const char *c_src = env->GetStringUTFChars(src_string, 0);
 			c_src_or_file[index] = strcpy(new char[strlen(c_src) + 1], c_src);
 			env->ReleaseStringUTFChars(src_string, c_src);
-		};
-		if (srcNames != nullptr)
-		{
-			c_src_names = new char*[c_length];
-			action = [action, &c_src_names, &env, &srcNames](int index)->void
-			{
-				jstring name_string = (jstring)env->GetObjectArrayElement(srcNames, index);
-				const char *c_name = env->GetStringUTFChars(name_string, 0);
-				c_src_names[index] = strcpy(new char[strlen(c_name) + 1], c_name);
-				env->ReleaseStringUTFChars(name_string, c_name);
-				action(index);
-			};
-		}
-		c_src_or_file = new char*[c_length];
-		for (int i = 0; i < c_length; i++)
-		{
-			action(i);
 		}
 	}
 	if (c_argc != 0)
@@ -272,32 +256,11 @@ Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jobjectA
 	{
 		if (c_length != 0)
 		{
-			function<void(int)> action1 = [&c_src_names](int index)->void
+			for (int index = 0; index < c_length; index++)
 			{
-				delete c_src_names[index];
-			};
-			function<void()> action2 = [&c_src_or_file]()->void
-			{ 
-				delete c_src_or_file;
-			};
-			if (c_src_names != nullptr)
-			{
-				action1 = [action1, &c_src_or_file](int index)->void
-				{
-					delete c_src_or_file[index];
-					action1(index);
-				};
-				action2 = [action2, &c_src_names]()->void
-				{
-					delete c_src_names;
-					action2();
-				};
+				delete c_src_or_file[index];
 			}
-			for (int i = 0; i < c_length; i++)
-			{
-				action1(i);
-			}
-			action2();
+			delete c_src_or_file;
 		}
 		if (c_argc != 0)
 		{
@@ -309,22 +272,23 @@ Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jobjectA
 		}
 		return child_pid;
 	}
-	else 
+	else
 	{
 		FILE* c_streams[3] = { nullptr };
 		Picoc *picoc = new Picoc();
-		PicocInitialise(picoc, getenv("STACKSIZE") ? atoi(getenv("STACKSIZE")) : PICOC_STACK_SIZE);
+		PicocInitialise(picoc, getenv("STACKSIZE") 
+			? atoi(getenv("STACKSIZE")) : PICOC_STACK_SIZE);
 		PicocIncludeAllSystemHeaders(picoc);
 		DumpStdIOToPipes(c_fd);
 		OpenStream(c_fd, c_streams);
 		InitIO(picoc, c_streams);
 		if (c_length != 0)
 		{
-			if (c_src_names != nullptr)
+			if (mode == 0)
 			{
 				for (int i = 0; i < c_length; i++)
 				{
-					PicocParse(picoc, c_src_names[i],
+					PicocParse(picoc, "scripting",
 						c_src_or_file[i],
 						strlen(c_src_or_file[i]),
 						true, false, true, true);
