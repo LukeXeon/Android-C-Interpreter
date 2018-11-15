@@ -10,5 +10,7 @@
 #define END_EXTERN_C 
 #define EXTERN_C 
 #endif
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "apicoc", __VA_ARGS__))
+#define LOGI(...) (__android_log_print(ANDROID_LOG_INFO, "apicoc", __VA_ARGS__))
+#define LOGW(...) (__android_log_print(ANDROID_LOG_WARN, "apicoc", __VA_ARGS__))
+#define VLOGI(format,ap) (__android_log_vprint(ANDROID_LOG_INFO, "apicoc", format,ap))
+#define VLOGW(format,ap) (__android_log_vprint(ANDROID_LOG_WARN, "apicoc", format,ap))

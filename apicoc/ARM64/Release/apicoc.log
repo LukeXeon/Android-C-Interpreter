@@ -1,0 +1,75 @@
+﻿  ANDROID_HOME=C:\Program Files (x86)\Android\android-sdk
+  ANT_HOME=D:\VSSDK\Apps\apache-ant-1.9.3
+  JAVA_HOME=D:\javaSdkPath
+  NDK_ROOT=C:\ProgramData\Microsoft\AndroidNDK64\android-ndk-r13b
+  pch.h
+C:\Users\Mr.小世界\Documents\Visual Studio 2017\Projects\apicoc\apicoc\pch.h(1,9): warning : #pragma once in main file [-Wpragma-once-outside-header]
+  #pragma once
+          ^
+  1 warning generated.
+  apicoc.cpp
+  In file included from apicoc.cpp:1:
+  In file included from ./apicoc.h:13:
+  In file included from C:\ProgramData\Microsoft\AndroidNDK64\android-ndk-r13b\sources\cxx-stl\gnu-libstdc++\4.9\include\unordered_map:35:
+C:\ProgramData\Microsoft\AndroidNDK64\android-ndk-r13b\sources\cxx-stl\gnu-libstdc++\4.9\include\bits/c++0x_warning.h(32,2): error : This file requires compiler and library support for the ISO C++ 2011 standard. This support is currently experimental, and must be enabled with the -std=c++11 or -std=gnu++11 compiler options.
+  #error This file requires compiler and library support for the \
+   ^
+apicoc.cpp(9,12): error : unknown type name 'function'
+          Transform(function<jobject(JNIEnv*, union AnyValue*)>&&toJObject,
+                    ^
+apicoc.cpp(9,20): error : expected ')'
+          Transform(function<jobject(JNIEnv*, union AnyValue*)>&&toJObject,
+                            ^
+  apicoc.cpp(9,11) :  note: to match this '('
+          Transform(function<jobject(JNIEnv*, union AnyValue*)>&&toJObject,
+                   ^
+apicoc.cpp(12,2): error : unknown type name 'function'
+          function<jobject(JNIEnv*, union AnyValue*)> toJObject;
+          ^
+apicoc.cpp(12,10): error : expected member name or ';' after declaration specifiers
+          function<jobject(JNIEnv*, union AnyValue*)> toJObject;
+          ~~~~~~~~^
+apicoc.cpp(13,2): error : unknown type name 'function'
+          function<void(JNIEnv*, Picoc*, union AnyValue*, jobject)> setReturn;
+          ^
+apicoc.cpp(13,10): error : expected member name or ';' after declaration specifiers
+          function<void(JNIEnv*, Picoc*, union AnyValue*, jobject)> setReturn;
+          ~~~~~~~~^
+apicoc.cpp(11,14): error : use of undeclared identifier 'toJObject'
+                  :toJObject(toJObject), setReturn(setReturn) {}
+                             ^
+apicoc.cpp(11,36): error : use of undeclared identifier 'setReturn'
+                  :toJObject(toJObject), setReturn(setReturn) {}
+                                                   ^
+apicoc.cpp(22,2): error : unknown type name 'unordered_map'
+          unordered_map<char, Transform> transforms;
+          ^
+apicoc.cpp(22,15): error : expected member name or ';' after declaration specifiers
+          unordered_map<char, Transform> transforms;
+          ~~~~~~~~~~~~~^
+apicoc.cpp(23,2): error : unknown type name 'function'
+          function<void(JNIEnv*, jobject, int)> setDescriptor;
+          ^
+apicoc.cpp(23,10): error : expected member name or ';' after declaration specifiers
+          function<void(JNIEnv*, jobject, int)> setDescriptor;
+          ~~~~~~~~^
+apicoc.cpp(24,2): error : unknown type name 'function'
+          function<jobject(JNIEnv*, jobject, int, jobjectArray)> onInvokeHandler;
+          ^
+apicoc.cpp(24,10): error : expected member name or ';' after declaration specifiers
+          function<jobject(JNIEnv*, jobject, int, jobjectArray)> onInvokeHandler;
+          ~~~~~~~~^
+apicoc.cpp(48,9): error : no member named 'setDescriptor' in '(anonymous struct at apicoc.cpp:16:1)'
+          Helper.setDescriptor(env, j_fd[0], stdin_pipe[1]);//w
+          ~~~~~~ ^
+apicoc.cpp(49,9): error : no member named 'setDescriptor' in '(anonymous struct at apicoc.cpp:16:1)'
+          Helper.setDescriptor(env, j_fd[1], stdout_pipe[0]);//r
+          ~~~~~~ ^
+apicoc.cpp(50,9): error : no member named 'setDescriptor' in '(anonymous struct at apicoc.cpp:16:1)'
+          Helper.setDescriptor(env, j_fd[2], stderr_pipe[0]);//r
+          ~~~~~~ ^
+apicoc.cpp(84,9): error : no member named 'setDescriptor' in '(anonymous struct at apicoc.cpp:16:1)'
+          Helper.setDescriptor = [fdField](JNIEnv*env, jobject fdObject, int fd)->void
+          ~~~~~~ ^
+CLANGCOMPILE : fatal error : too many errors emitted, stopping now [-ferror-limit=]
+  20 errors generated.

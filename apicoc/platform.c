@@ -133,13 +133,12 @@ void PrintSourceTextErrorLine(IOFILE *Stream, const char *FileName, const char *
 /* exit with a message */
 void ProgramFail(struct ParseState *Parser, const char *Message, ...)
 {
-
     va_list Args;
-    PrintSourceTextErrorLine(Parser->pc->CStdOut, Parser->FileName, Parser->SourceText, Parser->Line, Parser->CharacterPos);
+    PrintSourceTextErrorLine(Parser->pc->CStdErr, Parser->FileName, Parser->SourceText, Parser->Line, Parser->CharacterPos);
     va_start(Args, Message);
-    PlatformVPrintf(Parser->pc->CStdOut, Message, Args);
+    PlatformVPrintf(Parser->pc->CStdErr, Message, Args);
     va_end(Args);
-    PlatformPrintf(Parser->pc->CStdOut, "\n");
+    PlatformPrintf(Parser->pc->CStdErr, "\n");
     PlatformExit(Parser->pc, 1);
 }
 
@@ -147,20 +146,19 @@ void ProgramFail(struct ParseState *Parser, const char *Message, ...)
 void ProgramFailNoParser(Picoc *pc, const char *Message, ...)
 {
     va_list Args;
-
     va_start(Args, Message);
-    PlatformVPrintf(pc->CStdOut, Message, Args);
+    PlatformVPrintf(pc->CStdErr, Message, Args);
     va_end(Args);
-    PlatformPrintf(pc->CStdOut, "\n");
+    PlatformPrintf(pc->CStdErr, "\n");
     PlatformExit(pc, 1);
 }
 
 /* like ProgramFail() but gives descriptive error messages for assignment */
 void AssignFail(struct ParseState *Parser, const char *Format, struct ValueType *Type1, struct ValueType *Type2, int Num1, int Num2, const char *FuncName, int ParamNo)
 {
-    IOFILE *Stream = Parser->pc->CStdOut;
+    IOFILE *Stream = Parser->pc->CStdErr;
     
-    PrintSourceTextErrorLine(Parser->pc->CStdOut, Parser->FileName, Parser->SourceText, Parser->Line, Parser->CharacterPos);
+    PrintSourceTextErrorLine(Parser->pc->CStdErr, Parser->FileName, Parser->SourceText, Parser->Line, Parser->CharacterPos);
     PlatformPrintf(Stream, "can't %s ", (FuncName == NULL) ? "assign" : "set");   
         
     if (Type1 != NULL)
@@ -180,11 +178,11 @@ void LexFail(Picoc *pc, struct LexState *Lexer, const char *Message, ...)
 {
     va_list Args;
 
-    PrintSourceTextErrorLine(pc->CStdOut, Lexer->FileName, Lexer->SourceText, Lexer->Line, Lexer->CharacterPos);
+    PrintSourceTextErrorLine(pc->CStdErr, Lexer->FileName, Lexer->SourceText, Lexer->Line, Lexer->CharacterPos);
     va_start(Args, Message);
-    PlatformVPrintf(pc->CStdOut, Message, Args);
+    PlatformVPrintf(pc->CStdErr, Message, Args);
     va_end(Args);
-    PlatformPrintf(pc->CStdOut, "\n");
+    PlatformPrintf(pc->CStdErr, "\n");
     PlatformExit(pc, 1);
 }
 

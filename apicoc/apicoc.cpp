@@ -440,6 +440,12 @@ __InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Valu
 			}
 			jobject Result = Helper.onInvokeHandler(env, Wrapper, Param[1]->Val->Integer, Args);
 			env->DeleteLocalRef(Args);
+			if (env->ExceptionCheck())
+			{
+				env->ExceptionDescribe();
+				env->ExceptionClear();
+				ProgramFail(Parser,"throw java exception");
+			}
 			Helper.transforms[PramTypeList[0]].setReturn(env, Parser->pc, Param[3]->Val, Result);
 			env->DeleteLocalRef(Result);
 		}
