@@ -8,6 +8,7 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <functional>
 #include <unordered_map>

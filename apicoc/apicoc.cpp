@@ -199,6 +199,18 @@ static void InitHelper(JNIEnv*env)
 
 }
 
+int testaddr(const void*ptr, int size)
+{
+	int nullfd = open("/dev/random", O_WRONLY);
+	int result = write(nullfd, ptr, size);
+	if (result < 0)
+	{
+		errno = 0;
+	}
+	close(nullfd);
+	return result > 0;
+}
+
 EXTERN_C
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM* vm, void *reserved)
@@ -311,6 +323,7 @@ Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jint mod
 			exit(picoc->PicocExitValue);
 			//不用做清理内存操作
 		}
+
 	}
 }
 
@@ -452,4 +465,9 @@ JNIEXPORT void JNICALL
 RuntimeHeapSize(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
 	ReturnValue->Val->LongInteger = PoolSize(Parser->pc->Pool);
+}
+EXTERN_C
+JNIEXPORT void JNICALL RuntimeTestAddr(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+{
+	ReturnValue->Val->Integer = testaddr(Param[0]->Val->Pointer, Param[1]->Val->Integer);
 }
