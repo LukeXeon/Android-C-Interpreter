@@ -73,13 +73,10 @@ static void InitIO(Picoc*pc, FILE*streams[3])
 	pc->CStdErr = streams[2];
 }
 
-static void InitHelperFiled(JNIEnv*env)
+static void InitHelper(JNIEnv*env)
 {
 	Helper.objectClass = (jclass)env->NewGlobalRef(env->FindClass("java/lang/Object"));
-}
 
-static void InitHelperMethod(JNIEnv*env)
-{
 	jfieldID fdField = env->GetFieldID(env->FindClass("java/io/FileDescriptor"), "descriptor", "I");
 	Helper.setDescriptor = [fdField](JNIEnv*env, jobject fdObject, int fd)->void
 	{
@@ -192,9 +189,9 @@ static void InitHelperMethod(JNIEnv*env)
 		jstring text = (jstring)obj;
 		if (text != nullptr)
 		{
-			const char* text_ = env->GetStringUTFChars(text, 0);
-			*((char**)val->Pointer) = strcpy((char*)pool_calloc(pc->Pool, 1, sizeof(char[strlen(text_) + 1])), text_);
-			env->ReleaseStringUTFChars(text, text_);
+			jsize length = env->GetStringUTFLength(text);
+			*((char**)val->Pointer) = (char*)PoolCalloc(pc->Pool, length + 1, sizeof(char));
+			env->GetStringUTFRegion(text, 0, length, *((char**)val->Pointer));
 		}
 	}));
 	Helper.transforms.emplace('V', Transform([](JNIEnv* env, union AnyValue* val)->jobject {return nullptr;},
@@ -210,8 +207,7 @@ JNI_OnLoad(JavaVM* vm, void *reserved)
 	Helper.javaVM = vm;
 	JNIEnv*env = nullptr;
 	vm->GetEnv((void**)(&env), JNI_VERSION_1_6);
-	InitHelperFiled(env);
-	InitHelperMethod(env);
+	InitHelper(env);
 	return JNI_VERSION_1_6;
 }
 
@@ -235,20 +231,20 @@ Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jint mod
 		for (int index = 0; index < c_length; index++)
 		{
 			jstring src_string = (jstring)env->GetObjectArrayElement(srcOrFile, index);
-			const char *c_src = env->GetStringUTFChars(src_string, 0);
-			c_src_or_file[index] = strcpy(new char[strlen(c_src) + 1], c_src);
-			env->ReleaseStringUTFChars(src_string, c_src);
+			int length = env->GetStringUTFLength(src_string);
+			c_src_or_file[index] = new char[length + 1];
+			env->GetStringUTFRegion(src_string, 0, length, c_src_or_file[index]);
 		}
 	}
 	if (c_argc != 0)
 	{
 		c_argv = new char *[c_argc];
-		for (int i = 0; i < c_argc; i++)
+		for (int index = 0; index < c_argc; index++)
 		{
-			jstring arg_string = (jstring)env->GetObjectArrayElement(srcOrFile, i);
-			const char * arg = env->GetStringUTFChars(arg_string, 0);
-			c_argv[i] = strcpy(new char[strlen(arg) + 1], arg);
-			env->ReleaseStringUTFChars(arg_string, arg);
+			jstring arg_string = (jstring)env->GetObjectArrayElement(args, index);
+			int length = env->GetStringUTFLength(arg_string);
+			c_argv[index] = new char[length + 1];
+			env->GetStringUTFRegion(arg_string, 0, length, c_argv[index]);
 		}
 	}
 	while ((child_pid = fork()) == -1);
@@ -302,7 +298,7 @@ Java_edu_guet_apicoc_ScriptRuntime_createSub0(JNIEnv *env, jclass type, jint mod
 				}
 			}
 		}
-		picoc->Pool = pool_create(normal_t);
+		picoc->Pool = PoolCreate(normal_t);
 		picoc->Wrapper = nullptr;
 		if (PicocPlatformSetExitPoint(picoc))
 		{
@@ -347,7 +343,7 @@ Java_edu_guet_apicoc_ScriptRuntime_init0(JNIEnv *env, jobject obj, jobject stdin
 	OpenStream(c_fd, c_streams);
 	InitIO(picoc, c_streams);
 	picoc->Wrapper = env->NewWeakGlobalRef(obj);
-	picoc->Pool = pool_create(manager_t);
+	picoc->Pool = PoolCreate(manager_t);
 	return ToJLong(picoc);
 }
 
@@ -388,7 +384,7 @@ Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr)
 	close(fileno(pc->CStdOut));
 	close(fileno(pc->CStdErr));
 	PicocCleanup(pc);
-	pool_destroy(pc->Pool);
+	PoolDestroy(pc->Pool);
 	delete pc;
 }
 
@@ -451,3 +447,5 @@ __InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Valu
 		}
 	}
 }
+
+

@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <unordered_map>
 using namespace std;
+#define  LOG_BUFFER_SIZE (1024)
 extern "C"
 {
 #include "../interpreter.h"
@@ -19,10 +20,9 @@ extern "C"
 		struct StdVararg PrintfArgs;
 		PrintfArgs.Param = Param;
 		PrintfArgs.NumArgs = NumArgs - 1;
-		const char*format = (const char*)Param[0]->Val->Pointer;
-		char LogBuffer[1024];
-		StdioBasePrintf(Parser, NULL, LogBuffer, 1024, (char*)Param[1]->Val->Pointer, &PrintfArgs);
-		ReturnValue->Val->Integer = LOGW(LogBuffer);
+		char LogBuffer[LOG_BUFFER_SIZE];
+		StdioBasePrintf(Parser, NULL, LogBuffer, LOG_BUFFER_SIZE, (char*)Param[0]->Val->Pointer, &PrintfArgs);
+		ReturnValue->Val->Integer = __android_log_write(ANDROID_LOG_WARN, "apicoc", LogBuffer);
 	}
 
 	void RuntimeLogI(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -30,16 +30,17 @@ extern "C"
 		struct StdVararg PrintfArgs;
 		PrintfArgs.Param = Param;
 		PrintfArgs.NumArgs = NumArgs - 1;
-		const char*format = (const char*)Param[0]->Val->Pointer;
-		char LogBuffer[1024];
-		StdioBasePrintf(Parser, NULL, LogBuffer, 1024, (char*)Param[1]->Val->Pointer, &PrintfArgs);
-		ReturnValue->Val->Integer = LOGI(LogBuffer);
+		char LogBuffer[LOG_BUFFER_SIZE];
+		StdioBasePrintf(Parser, NULL, LogBuffer, LOG_BUFFER_SIZE, (char*)Param[0]->Val->Pointer, &PrintfArgs);
+		ReturnValue->Val->Integer = __android_log_write(ANDROID_LOG_INFO, "apicoc", LogBuffer);
 	}
 
 	void RuntimeLineno(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
 		ReturnValue->Val->Integer = Parser->Line;
 	}
+
+
 
 	/* list of all library functions and their prototypes */
 	struct LibraryFunction UnixFunctions[] =

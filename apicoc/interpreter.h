@@ -475,7 +475,7 @@ struct Picoc_Struct {
 
 	/* memory pool */
 
-	pool_t Pool;
+	PoolManager Pool;
 
 	/* jni */
 
