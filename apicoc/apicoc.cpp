@@ -447,5 +447,9 @@ __InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Valu
 		}
 	}
 }
-
-
+EXTERN_C
+JNIEXPORT void JNICALL
+RuntimeHeapSize(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+{
+	ReturnValue->Val->LongInteger = PoolSize(Parser->pc->Pool);
+}

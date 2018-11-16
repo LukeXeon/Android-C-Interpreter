@@ -13,6 +13,8 @@ extern "C"
 
 	}
 
+	void RuntimeHeapSize(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+
 	void __InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
 
 	void RuntimeLogW(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -47,6 +49,7 @@ extern "C"
 	{
 		{ RuntimeLineno,    "int lineno();" },
 		{ RuntimeLogW,      "int logw(char *, ...);" },
+		{ RuntimeHeapSize,  "long heapsize();" },
 		{ RuntimeLogI,      "int logi(char *, ...);" },
 		{ __InternalCall,   "int __internal_call(void*,int,char *,void *, ...);" },
 		//带有“__”双下划线的都是运行时内部使用的代码（地址验证,下标,类型签名,返回值地址,参数列表）

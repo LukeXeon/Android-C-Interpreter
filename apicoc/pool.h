@@ -16,5 +16,5 @@ extern void*  PoolRealloc(PoolManager m, void *p, size_t s);
 extern void   PoolFree(PoolManager m, void * p);
 extern PoolManager PoolCreate(enum pool_type t);
 extern void PoolDestroy(PoolManager m);
-
+extern long long PoolSize(PoolManager m);
 END_EXTERN_C
