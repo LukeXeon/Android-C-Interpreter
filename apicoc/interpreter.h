@@ -6,7 +6,7 @@
 #define INTERPRETER_H
 
 #include "platform.h"
-#include "pool.h"
+#include "extend/pool.h"
 #include <jni.h>
 
 

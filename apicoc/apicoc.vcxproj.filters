@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="apicoc.cpp" />
     <ClCompile Include="clibrary.c" />
     <ClCompile Include="debug.c" />
     <ClCompile Include="expression.c" />
@@ -25,20 +24,25 @@
     <ClCompile Include="cstdlib\string.c" />
     <ClCompile Include="cstdlib\time.c" />
     <ClCompile Include="cstdlib\unistd.c" />
-    <ClCompile Include="pool.cpp" />
-    <ClCompile Include="libs\dlfcn.c" />
     <ClCompile Include="platform\library_android.cpp" />
     <ClCompile Include="platform\platform_android.c" />
+    <ClCompile Include="extend\runtime.cpp" />
+    <ClCompile Include="extend\extend.cpp" />
+    <ClCompile Include="extend\pool.cpp" />
+    <ClCompile Include="extend\dlfcn.c" />
+    <ClCompile Include="helper.cpp" />
+    <ClCompile Include="jni.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="apicoc.h" />
     <ClInclude Include="interpreter.h" />
     <ClInclude Include="picoc.h" />
     <ClInclude Include="platform.h" />
     <ClInclude Include="linenoise-ng\ConvertUTF.h" />
     <ClInclude Include="linenoise-ng\linenoise.h" />
-    <ClInclude Include="pool.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="print.h" />
+    <ClInclude Include="extend\runtime.h" />
+    <ClInclude Include="extend\pool.h" />
+    <ClInclude Include="extend\extend.h" />
+    <ClInclude Include="helper.h" />
   </ItemGroup>
 </Project>

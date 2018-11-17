@@ -6,18 +6,66 @@ extern "C"
 {
 #include "../interpreter.h"
 #include "../pch.h"
-#include "../print.h"
+#include "../extend/runtime.h"
+#include "../extend/pool.h"
+#include "../helper.h"
 
-	void RuntimeSetupFunc(Picoc*pc)
+	extern int StdioBasePrintf(struct ParseState *Parser, FILE *Stream, char *StrOut, int StrOutLen, char *Format, struct StdVararg *Args);
+
+	void RuntimeSetupFunc(Picoc*)
 	{
-
 	}
 
-	void RuntimeTestAddr(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+	void RuntimeInternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+	{
+		LOGI("picoc call handler");
+		JNIEnv * env = GetCurrentEnv();
+		jobject Wrapper = Parser->pc->Wrapper;
+		struct Value * ThisArg = (Param + 3)[0];
+		if (Wrapper != nullptr&&Param[0]->Val->Pointer == Parser->pc)
+		{
+			if (env != nullptr && !env->IsSameObject(Wrapper, NULL))
+			{
+				const char * PramTypeList = (const char*)Param[2]->Val->Pointer;
+				jsize Length = strlen(PramTypeList);
+				jobjectArray Args = NewJObjectArray(env, Length - 1);
+				for (int i = 1; i < Length; i++)
+				{
+					ThisArg = (struct Value *)((char *)ThisArg + MEM_ALIGN(sizeof(struct Value) + TypeStackSizeValue(ThisArg)));
+					jobject item = ToJObject(PramTypeList[i], env, ThisArg->Val);
+					env->SetObjectArrayElement(Args, i - 1, item);
+					env->DeleteLocalRef(item);
+				}
+				jobject Result = OnInvokeHandler(env, Wrapper, Param[1]->Val->Integer, Args);
+				env->DeleteLocalRef(Args);
+				if (env->ExceptionCheck())
+				{
+					env->ExceptionDescribe();
+					env->ExceptionClear();
+					ProgramFail(Parser, "throw java exception");
+				}
+				ToAnyValue(PramTypeList[0], env, Parser->pc, Param[3]->Val, Result);
+				env->DeleteLocalRef(Result);
+			}
+		}
+	}
 
-	void RuntimeHeapSize(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+	void  RuntimeTAddr(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+	{
+		ReturnValue->Val->Integer = taddr(Param[0]->Val->Pointer);
+	}
 
-	void __InternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
+	void  RuntimeTStr(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+	{
+		ReturnValue->Val->Integer = tstr(Param[0]->Val->Pointer, Param[1]->Val->Integer);
+	}
+
+	void RuntimeHeapSize(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+	{
+		ReturnValue->Val->LongInteger = PoolSize(Parser->pc->Pool);
+	}
+
+	void RuntimeInternalCall(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs);
 
 	void RuntimeLogW(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 	{
@@ -44,17 +92,16 @@ extern "C"
 		ReturnValue->Val->Integer = Parser->Line;
 	}
 
-
-
 	/* list of all library functions and their prototypes */
 	struct LibraryFunction UnixFunctions[] =
 	{
-		{ RuntimeLineno,    "int lineno();" },
-		{ RuntimeLogW,      "int logw(char *, ...);" },
-		{ RuntimeHeapSize,  "long heapsize();" },
-		{ RuntimeTestAddr,  "bool testaddr(void*,int);" },
-		{ RuntimeLogI,      "int logi(char *, ...);" },
-		{ __InternalCall,   "int __internal_call(void*,int,char *,void *, ...);" },
+		{ RuntimeLineno,         "int lineno();" },
+		{ RuntimeLogW,           "int logw(char *, ...);" },
+		{ RuntimeHeapSize,       "long heapsize();" },
+		{ RuntimeTAddr,          "bool taddr(void*);" },
+		{ RuntimeTStr,           "bool tstr(void*,int);" },
+		{ RuntimeLogI,           "int logi(char *, ...);" },
+		{ RuntimeInternalCall,   "int __internal_call(void*,int,char *,void *, ...);" },
 		//带有“__”双下划线的都是运行时内部使用的代码（地址验证,下标,类型签名,返回值地址,参数列表）
 		{ NULL,         NULL }
 	};

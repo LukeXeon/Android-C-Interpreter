@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "../interpreter.h"
-#include "../print.h"
+#include "../extend/runtime.h"
 
 #define MAX_FORMAT 80
 #define MAX_SCANF_ARGS 10

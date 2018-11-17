@@ -2,11 +2,11 @@
 #include <jni.h>
 #include <android/log.h>
 #ifdef __cplusplus
-#define BINGE_EXTERN_C extern "C"{
+#define BEGIN_EXTERN_C extern "C"{
 #define END_EXTERN_C }
 #define EXTERN_C extern "C"
 #else
-#define BINGE_EXTERN_C 
+#define BEGIN_EXTERN_C 
 #define END_EXTERN_C 
 #define EXTERN_C 
 #endif

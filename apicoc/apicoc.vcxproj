@@ -166,7 +166,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="apicoc.cpp" />
     <ClCompile Include="clibrary.c" />
     <ClCompile Include="cstdlib\ctype.c" />
     <ClCompile Include="cstdlib\errno.c" />
@@ -179,14 +178,18 @@
     <ClCompile Include="cstdlib\unistd.c" />
     <ClCompile Include="debug.c" />
     <ClCompile Include="expression.c" />
+    <ClCompile Include="extend\extend.cpp" />
+    <ClCompile Include="helper.cpp" />
+    <ClCompile Include="jni.cpp" />
+    <ClCompile Include="extend\runtime.cpp" />
     <ClCompile Include="heap.c" />
     <ClCompile Include="include.c" />
     <ClCompile Include="lex.c" />
-    <ClCompile Include="libs\dlfcn.c" />
+    <ClCompile Include="extend\dlfcn.c" />
     <ClCompile Include="linenoise-ng\ConvertUTF.cpp" />
     <ClCompile Include="linenoise-ng\linenoise.cpp" />
     <ClCompile Include="linenoise-ng\wcwidth.cpp" />
-    <ClCompile Include="pool.cpp" />
+    <ClCompile Include="extend\pool.cpp" />
     <ClCompile Include="parse.c" />
     <ClCompile Include="platform.c" />
     <ClCompile Include="platform\library_android.cpp" />
@@ -196,13 +199,14 @@
     <ClCompile Include="variable.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="apicoc.h" />
-    <ClInclude Include="print.h" />
+    <ClInclude Include="extend\extend.h" />
+    <ClInclude Include="helper.h" />
+    <ClInclude Include="extend\runtime.h" />
     <ClInclude Include="interpreter.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="linenoise-ng\ConvertUTF.h" />
     <ClInclude Include="linenoise-ng\linenoise.h" />
-    <ClInclude Include="pool.h" />
+    <ClInclude Include="extend\pool.h" />
     <ClInclude Include="picoc.h" />
     <ClInclude Include="platform.h" />
   </ItemGroup>

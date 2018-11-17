@@ -2,5 +2,7 @@
   ANT_HOME=D:\VSSDK\Apps\apache-ant-1.9.3
   JAVA_HOME=D:\javaSdkPath
   NDK_ROOT=C:\ProgramData\Microsoft\AndroidNDK64\android-ndk-r13b
-  apicoc.cpp
+  stdio.c
+  runtime.cpp
+  library_android.cpp
   apicoc.vcxproj -> C:\Users\Mr.小世界\Documents\Visual Studio 2017\Projects\apicoc\ARM\Release\libapicoc.so
