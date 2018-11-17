@@ -4,8 +4,10 @@ BEGIN_EXTERN_C
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <string.h>
 #include "interpreter.h"
 #include "extend/pool.h"
+#include "extend/runtime.h"
 #include "picoc.h"
 END_EXTERN_C
 #define PICOC_STACK_SIZE (128*1024)              /* space for the the stack */
@@ -181,11 +183,11 @@ Java_edu_guet_apicoc_ScriptRuntime_close0(JNIEnv *env, jclass type, jlong ptr)
 {
 	LOGI("picoc close");
 	Picoc *pc = ToPicocHandler(ptr);
+	PoolDestroy(pc->Pool);
 	close(fileno(pc->CStdIn));
 	close(fileno(pc->CStdOut));
 	close(fileno(pc->CStdErr));
 	PicocCleanup(pc);
-	PoolDestroy(pc->Pool);
 	delete pc;
 }
 
@@ -210,4 +212,120 @@ Java_edu_guet_apicoc_ScriptRuntime_containsName0(JNIEnv *env, jclass type, jlong
 	jboolean result = TableGet(&pc->GlobalTable, name, &value, NULL, NULL, NULL);
 	env->ReleaseStringUTFChars(name_, name);
 	return result;
+}
+
+
+EXTERN_C
+JNIEXPORT jobject JNICALL
+Java_edu_guet_apicoc_ScriptRuntime_allocString0(JNIEnv *env, jclass type, jlong ptr, int cap)
+{
+	Picoc*pc = ToPicocHandler(ptr);
+	char*buffer = (char*)PoolCalloc(pc->Pool, cap + 1, sizeof(char));
+	buffer[cap] = '\0';
+	return NewStringWrapper(env, buffer);
+}
+
+//string
+
+EXTERN_C
+JNIEXPORT jint JNICALL
+Java_edu_guet_apicoc_ScriptingString_length(JNIEnv *env, jobject obj)
+{
+	char * handler = GetStringHandler(env, obj);
+	if (handler == nullptr)
+	{
+		return 0;
+	}
+	if (!taddr(handler))
+	{
+		ThrowIllegalEx(env, "eorrr pointer");
+		return 0;
+	}
+	return strlen(handler);
+}
+
+EXTERN_C
+JNIEXPORT jint JNICALL
+Java_edu_guet_apicoc_ScriptingString_compareTo(JNIEnv *env, jobject obj, jobject obj2)
+{
+	char*lref = GetStringHandler(env, obj);
+	char*rref = GetStringHandler(env, obj2);
+	if (lref == nullptr&&rref == nullptr)
+	{
+		return 0;
+	}
+	else if ((lref != nullptr&&rref == nullptr) || (lref == nullptr&&rref != nullptr))
+	{
+		return -1;
+	}
+	else if (!taddr(lref) || !taddr(rref))
+	{
+		return -1;
+	}
+	else
+	{
+		return strcmp(lref, rref);
+	}
+}
+
+EXTERN_C
+JNIEXPORT jstring JNICALL
+Java_edu_guet_apicoc_ScriptingString_toString(JNIEnv *env, jobject obj)
+{
+	char * handler = GetStringHandler(env, obj);
+	if (handler == nullptr)
+	{
+		return env->NewStringUTF("");
+	}
+	else if (!taddr(handler))
+	{
+		ThrowIllegalEx(env, "eorrr pointer");
+		return nullptr;
+	}
+	return env->NewStringUTF(handler);
+}
+
+EXTERN_C
+JNIEXPORT jbyte JNICALL
+Java_edu_guet_apicoc_ScriptingString_charAt(JNIEnv *env, jobject obj,jint index)
+{
+	char * handler = GetStringHandler(env, obj);
+	if (!taddr(handler))
+	{
+		ThrowIllegalEx(env, "eorrr pointer");
+		return 0;
+	}
+	if (CheckStringIndex(env, obj, index))
+	{
+		return handler[index];
+	}
+	return 0;
+}
+
+EXTERN_C
+JNIEXPORT void JNICALL
+Java_edu_guet_apicoc_ScriptingString_setCharAt(JNIEnv *env, jobject obj, jbyte ch, jint index)
+{
+	char * handler = GetStringHandler(env, obj);
+	if (!taddr(handler))
+	{
+		ThrowIllegalEx(env, "eorrr pointer");
+		return;
+	}
+	if (CheckStringIndex(env, obj, index))
+	{
+		handler[index] = ch;
+	}
+}
+
+EXTERN_C
+JNIEXPORT jboolean JNICALL
+Java_edu_guet_apicoc_ScriptingString_isAlive(JNIEnv *env, jobject obj)
+{
+	char * handler = GetStringHandler(env, obj);
+	if (handler == nullptr)
+	{
+		return true;
+	}
+	return taddr(handler);
 }

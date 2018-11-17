@@ -1,6 +1,7 @@
 #include "helper.h"
 #include <functional>
 #include <unordered_map>
+#include <string>
 using namespace std;
 
 struct Transform
@@ -18,16 +19,56 @@ struct
 {
 	//field
 	JavaVM*javaVM;
-	jclass objectClass;
 	//method
-	unordered_map<char,Transform*> transforms;
+	unordered_map<char, Transform*> transforms;
+	function<void(JNIEnv*,const char*)> throwIllegalEx;
+	function<char*(JNIEnv*, jobject)> getStringHandler;
+	function<bool(JNIEnv*, jobject, int)> checkStringIndex;
+	function<jobjectArray(JNIEnv*, int)> newJObjectArray;
+	function<jobject(JNIEnv*, char*)> newStringWrapper;
 	function<void(JNIEnv*, jobject, int)> setDescriptor;
 	function<jobject(JNIEnv*, jobject, int, jobjectArray)> onInvokeHandler;
 } Helper;
 
 static void LoadHelper(JNIEnv*env)
 {
-	Helper.objectClass = (jclass)env->NewGlobalRef(env->FindClass("java/lang/Object"));
+	jclass illegalExClass = (jclass)env->NewGlobalRef(env->FindClass("java/lang/IllegalStateException"));
+	Helper.throwIllegalEx = [illegalExClass](JNIEnv*env, const char*message)->void
+	{
+		env->ThrowNew(illegalExClass, message);
+	};
+
+	jclass jobjectClass = (jclass)env->NewGlobalRef(env->FindClass("java/lang/Object"));
+	Helper.newJObjectArray = [jobjectClass](JNIEnv*env, int length)->jobjectArray
+	{
+		return env->NewObjectArray(length, jobjectClass, NULL);
+	};
+
+	jclass stringWrapperClass = (jclass)env->NewGlobalRef(env->FindClass("edu/guet/apicoc/ScriptingString"));
+	jmethodID stringWrapperInit = env->GetMethodID(stringWrapperClass, "<init>", "(JI)V");
+	Helper.newStringWrapper = [stringWrapperClass, stringWrapperInit](JNIEnv*env, char*str)->jobject
+	{
+		return env->NewObject(stringWrapperClass, stringWrapperInit, (jlong)str, (jint)strlen(str));
+	};
+	jfieldID stringHandlerField = env->GetFieldID(stringWrapperClass, "handler", "J");
+	Helper.getStringHandler = [stringHandlerField](JNIEnv*env, jobject obj)->char*
+	{
+		return (char*)env->GetLongField(obj, stringHandlerField);
+	};
+	jfieldID maxCapacityField = env->GetFieldID(stringWrapperClass, "maxCapacity", "I");
+	jclass indexExClass = (jclass)env->NewGlobalRef(env->FindClass("java/lang/IndexOutOfBoundsException"));
+	Helper.checkStringIndex = [indexExClass, maxCapacityField](JNIEnv*env, jobject obj, jint index)->bool
+	{
+		jint maxCapacity = env->GetIntField(obj, maxCapacityField);
+		if (index<0 || index>maxCapacity)
+		{
+			string message = "error index = ";
+			message += index;
+			env->ThrowNew(indexExClass, message.c_str());
+			return false;
+		}
+		return true;
+	};
 
 	jfieldID fdField = env->GetFieldID(env->FindClass("java/io/FileDescriptor"), "descriptor", "I");
 	Helper.setDescriptor = [fdField](JNIEnv*env, jobject fdObject, int fd)->void
@@ -134,22 +175,21 @@ static void LoadHelper(JNIEnv*env)
 	}));
 	Helper.transforms.emplace('L', new Transform([](JNIEnv* env, union AnyValue* val)->jobject
 	{
-		return val->Pointer != nullptr ? env->NewStringUTF((const char*)val->Pointer) : nullptr;
+		return NewStringWrapper(env,(char*)val->Pointer);
 	},
 		[](JNIEnv* env, Picoc*pc, union AnyValue*val, jobject obj)->void
 	{
-		jstring text = (jstring)obj;
-		if (text != nullptr)
+		if (obj != nullptr)
 		{
-			jsize length = env->GetStringUTFLength(text);
-			*((char**)val->Pointer) = (char*)PoolCalloc(pc->Pool, length + 1, sizeof(char));
-			env->GetStringUTFRegion(text, 0, length, *((char**)val->Pointer));
+			*((char**)val->Pointer) = GetStringHandler(env, obj);
 		}
 	}));
 	Helper.transforms.emplace('V', new Transform([](JNIEnv* env, union AnyValue* val)->jobject {return nullptr; },
 		[](JNIEnv* env, Picoc*, union AnyValue*val, jobject obj)->void {}));
 
 }
+
+
 
 EXTERN_C
 JNIEXPORT jint JNICALL
@@ -232,7 +272,7 @@ JNIEnv*GetCurrentEnv()
 
 jobjectArray NewJObjectArray(JNIEnv*env,jsize length)
 {
-	return env->NewObjectArray(length, Helper.objectClass, NULL);
+	return Helper.newJObjectArray(env,length);
 }
 
 jobject OnInvokeHandler(JNIEnv* env, jobject obj, int index, jobjectArray arg)
@@ -240,4 +280,23 @@ jobject OnInvokeHandler(JNIEnv* env, jobject obj, int index, jobjectArray arg)
 	return Helper.onInvokeHandler(env, obj, index, arg);
 }
 
+jobject NewStringWrapper(JNIEnv* env, char*str)
+{
+	return str == nullptr ? nullptr : Helper.newStringWrapper(env, str);
+}
+
+char* GetStringHandler(JNIEnv*env, jobject obj)
+{
+	return env->IsSameObject(obj, NULL) ? nullptr : Helper.getStringHandler(env, obj);
+}
+
+bool CheckStringIndex(JNIEnv*env,jobject obj,int index)
+{
+	return Helper.checkStringIndex(env, obj, index);
+}
+
+void ThrowIllegalEx(JNIEnv*env, const char*message)
+{
+	Helper.throwIllegalEx(env, message);
+}
 END_EXTERN_C

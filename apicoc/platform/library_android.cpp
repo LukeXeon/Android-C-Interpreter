@@ -98,10 +98,10 @@ extern "C"
 		{ RuntimeLineno,         "int lineno();" },
 		{ RuntimeLogW,           "int logw(char *, ...);" },
 		{ RuntimeHeapSize,       "long heapsize();" },
-		{ RuntimeTAddr,          "bool taddr(void*);" },
-		{ RuntimeTStr,           "bool tstr(void*,int);" },
+		{ RuntimeTAddr,          "int taddr(void *);" },
+		{ RuntimeTStr,           "int tstr(void *,int);" },
 		{ RuntimeLogI,           "int logi(char *, ...);" },
-		{ RuntimeInternalCall,   "int __internal_call(void*,int,char *,void *, ...);" },
+		{ RuntimeInternalCall,   "int __internal_call(void *,int,char *,void *, ...);" },
 		//带有“__”双下划线的都是运行时内部使用的代码（地址验证,下标,类型签名,返回值地址,参数列表）
 		{ NULL,         NULL }
 	};

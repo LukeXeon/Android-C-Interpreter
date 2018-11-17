@@ -1,5 +1,6 @@
 #include "pool.h"
 #include <unordered_set>
+#include <mutex>
 using namespace std;
 struct _pool_t
 {
@@ -43,12 +44,15 @@ struct _normal_t :public _pool_t
 struct _manager_t :public _pool_t
 {
 	unordered_set<void*> _set;
+	mutex _mutex;
 	virtual void * _malloc(size_t s)override
 	{
 		void*block = malloc(s);
 		if (block != NULL)
 		{
+			_mutex.lock();
 			this->_set.emplace(block);
+			_mutex.unlock();
 		}
 		return block;
 	}
@@ -58,7 +62,9 @@ struct _manager_t :public _pool_t
 		void*block = calloc(s1, s2);
 		if (block != NULL)
 		{
+			_mutex.lock();
 			this->_set.emplace(block);
+			_mutex.unlock();
 		}
 		return block;
 	}
@@ -68,34 +74,42 @@ struct _manager_t :public _pool_t
 		void*newBlock = realloc(block, s);
 		if (newBlock != NULL)
 		{
+			_mutex.lock();
 			this->_set.erase(block);
 			this->_set.emplace(newBlock);
+			_mutex.unlock();
 		}
 		return newBlock;
 	}
 
 	virtual void _free(void *block)override
 	{
+		_mutex.lock();
 		this->_set.erase(block);
+		_mutex.unlock();
 		free(block);
 	}
 
 	virtual long long _size()
 	{
 		long long result = 0;
+		_mutex.lock();
 		for (auto it = this->_set.begin(); it != this->_set.end(); it++)
 		{
 			result += malloc_usable_size(*it);
 		}
+		_mutex.unlock();
 		return result;
 	}
 
 	virtual ~_manager_t()override
 	{
+		_mutex.lock();
 		for (auto it = this->_set.begin(); it != this->_set.end(); it++)
 		{
 			free(*it);
 		}
+		_mutex.unlock();
 	}
 };
 

@@ -4,6 +4,10 @@
 BEGIN_EXTERN_C
 int tstr(const void*ptr, int size)
 {
+	if (ptr == nullptr)
+	{
+		return false;
+	}
 	int random = open("/dev/random", O_WRONLY);
 	int result = write(random, ptr, size);
 	close(random);
